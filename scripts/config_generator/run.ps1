@@ -69,9 +69,6 @@ foreach ($tmxFile in $tmxFiles) {
     # Store the final unique filename in the tracker
     $filenameTracker[$newName] = $true
 
-    # Output the new name for further processing
-    Write-Host "Original: $originalName, New: $newName"
-
     # Extract the CSV tile data from the TMX file
     $csvData = ExtractTileLayerData -tmxFilePath $tmxFile.FullName
 
@@ -177,18 +174,21 @@ if (-not $unusedPrgaSegments) {
 # Get the .hfm files from the current script directory (levels output folder)
 $hfmFiles = Get-ChildItem -Path $levelsOutputFolder -Filter *.hfm
 
-# Generate new segments based on .hfm files using unused PRGA segments
-$newSegments = foreach ($file in $hfmFiles) {
+$newSegments = foreach ($bank in $bankAssignments.Keys) {
     if ($unusedPrgaSegments.Count -eq 0) {
         Write-Host "Not enough unused PRGA segments for the bank files."
         exit
     }
 
-    $segmentName = $file.BaseName  # Extract the file name without extension
     $prga = $unusedPrgaSegments[0] # Get the next available PRGA segment
     $unusedPrgaSegments = $unusedPrgaSegments[1..$unusedPrgaSegments.Count] # Remove it from the list
 
-    "LBNK_${segmentName}:     load = PRGA_${prga}, type = ro;"
+    # Create a segment for the entire bank
+    $segmentName = "LBNK_{0:00}" -f $bank
+    $segmentEntry = "${segmentName}:     load = PRGA_${prga}, type = ro;"
+
+    # Return the segment entry
+    $segmentEntry
 }
 
 # Replace the placeholder with the new segments
@@ -197,4 +197,5 @@ $templateContent = $templateContent -replace '\[LEVEL SEGMENTS\]', ($newSegments
 # Write the updated content to the output file
 $templateContent | Set-Content -Path $outputFile
 
-Write-Host "Template updated with segments from .hfm files."
+Write-Host "Template updated with segments from assigned banks."
+
