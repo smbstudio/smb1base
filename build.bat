@@ -8,6 +8,8 @@ for /f "delims=" %%a in ('type build_options.ini ^| findstr /v "^[;#\[]"') do (
 
 @REM echo %options%
 
+powershell -ExecutionPolicy Bypass -File scripts\config_generator\run.ps1 
+
 tools\Windows\cc65\bin\cl65 ^
   --cpu 6502x -t nes  -g -Oisr -vm -T ^
   -C generated.cfg ^

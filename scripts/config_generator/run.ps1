@@ -1,8 +1,8 @@
 # Define paths
-$templateFile = "..\..\config_template.cfg"
-$levelsInputFolder = "..\..\src\tiled_levels"
-$levelsOutputFolder = "..\..\src\tiled_levels\generated"
-$outputFile = "..\..\generated.cfg"
+$templateFile = "config_template.cfg"
+$levelsInputFolder = "src\tiled_levels"
+$levelsOutputFolder = "src\tiled_levels\generated"
+$outputFile = "generated.cfg"
 
 # Function to convert a CSV string into a byte array
 function Convert-CSVToByteArray {
@@ -105,7 +105,7 @@ function Create-NewBankSegment {
     param (
         [int]$bankNumber
     )
-    return ".segment LBNK_{0:00}`n" -f $bankNumber
+    return ".segment `"LBNK_{0:00}`"`n" -f $bankNumber
 }
 
 # Iterate over .hfm files and assign them to banks
@@ -134,8 +134,8 @@ foreach ($hfmFile in $hfmFiles) {
     $bankAssignments[$currentBank] += $hfmFile.Name
     $currentBankSize += $fileSize
 
-    # Add the file include line to the segments content
-    $segmentsIncContent += [System.IO.Path]::GetFileNameWithoutExtension($hfmFile) + ":`n    .include `"{0}`"`n" -f $hfmFile.Name
+    # Add the file incbin line to the segments content
+    $segmentsIncContent += [System.IO.Path]::GetFileNameWithoutExtension($hfmFile) + ":`n    .incbin `"{0}`"`n" -f $hfmFile.Name
 }
 
 # Output the final bank's details

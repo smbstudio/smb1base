@@ -59,11 +59,15 @@ _COMMON_DEFINE_SEGMENTS = 1
 .include "screen_render.s"
 .include "sprite_render.s"
 
+.include "metatiles.s"
 
 .segment "AUDIO"
 
 .include "music_drivers/audio.s"
 
+.if USE_TILED_LEVELS
+.include "tiled_levels/generated/segments.inc"
+.endif
 
 ; .segment "FIXED"
 

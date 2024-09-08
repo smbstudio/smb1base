@@ -1308,7 +1308,7 @@ ExPipeE:
 ;--------------------------------
 
 SolidMTileUpperExt:
-  .byte $10, $61, CLOUD_METATILE, $c4
+  .byte $10, $61, CLOUD_MT, $c4
 
 CheckForSolidMTiles:
   jsr GetMTileAttrib        ;find appropriate offset based on metatile's 2 MSB
@@ -1316,7 +1316,7 @@ CheckForSolidMTiles:
   rts
 
 ClimbMTileUpperExt:
-  .byte $24, $6d, BRIDGE_METATILE + 1, $c6
+  .byte $24, $6d, BRIDGE_MT + 1, $c6
 
 CheckForClimbMTiles:
   jsr GetMTileAttrib        ;find appropriate offset based on metatile's 2 MSB
