@@ -43,7 +43,35 @@ function ExtractTileLayerData {
 
 # Compress .tmx files using huffmunch.exe and save the output as .hfm files
 $tmxFiles = Get-ChildItem -Path $levelsInputFolder -Filter *.tmx
+# Initialize a hashtable to track filename occurrences
+$filenameTracker = @{}
+
+Get-ChildItem -Path $levelsOutputFolder -Include *.hfm -File -Recurse | foreach { $_.Delete()}
 foreach ($tmxFile in $tmxFiles) {
+    $originalName = [System.IO.Path]::GetFileNameWithoutExtension($tmxFile)
+
+    # Replace spaces with underscores and remove unsupported characters
+    $newName = $originalName -replace '\s', '_' -replace '[^a-zA-Z0-9_]', ''
+
+    # Ensure the filename does not start with a number
+    if ($newName -match '^\d') {
+        $newName = "_" + $newName
+    }
+
+    # Track duplicates by checking if the name already exists in the tracker
+    $counter = 1
+    $baseName = $newName
+    while ($filenameTracker.ContainsKey($newName)) {
+        $newName = "$baseName" + "_$counter"
+        $counter++
+    }
+
+    # Store the final unique filename in the tracker
+    $filenameTracker[$newName] = $true
+
+    # Output the new name for further processing
+    Write-Host "Original: $originalName, New: $newName"
+
     # Extract the CSV tile data from the TMX file
     $csvData = ExtractTileLayerData -tmxFilePath $tmxFile.FullName
 
@@ -57,13 +85,73 @@ foreach ($tmxFile in $tmxFiles) {
     [System.IO.File]::WriteAllBytes($tempFilePath, $byteArray)
 
     $inputFilePath = $tmxFile.FullName
-    $outputFileName = [System.IO.Path]::GetFileNameWithoutExtension($tmxFile) + ".hfm"
+    $outputFileName = $newName + ".hfm"
     $outputFilePath = Join-Path -Path $levelsOutputFolder -ChildPath $outputFileName
     & "../../tools/huffmunch" "-B" $tempFilePath $outputFilePath
 
     # Delete the temporary binary file
     Remove-Item -Path $tempFilePath
 }
+
+# Set the maximum size for each bank in bytes
+$bankMaxSize = 0x2000  # 8192 bytes
+
+# Initialize variables to track current bank and its size
+$currentBank = 0
+$currentBankSize = 0
+$bankAssignments = @{}
+$segmentsIncContent = ""
+$totalSize = 0  # To track total size of .hfm files
+
+# Function to create a new bank segment
+function Create-NewBankSegment {
+    param (
+        [int]$bankNumber
+    )
+    return ".segment LBNK_{0:00}`n" -f $bankNumber
+}
+
+# Iterate over .hfm files and assign them to banks
+$hfmFiles = Get-ChildItem -Path $levelsOutputFolder -Filter *.hfm
+foreach ($hfmFile in $hfmFiles) {
+    $fileSize = (Get-Item $hfmFile.FullName).Length
+    $totalSize += $fileSize  # Add to the total size
+
+    # Check if adding this file exceeds the current bank's size limit
+    if ($currentBankSize + $fileSize -gt $bankMaxSize) {
+        # Output the current bank's details
+        Write-Host ("Bank {0:00} filled with {1} bytes." -f $currentBank, $currentBankSize)
+
+        # Move to the next bank
+        $currentBank++
+        $currentBankSize = 0
+    }
+
+    # If it's the first file in the bank, create the bank segment
+    if (-not $bankAssignments[$currentBank]) {
+        $bankAssignments[$currentBank] = @()
+        $segmentsIncContent += Create-NewBankSegment -bankNumber $currentBank
+    }
+
+    # Assign the file to the current bank and update the bank size
+    $bankAssignments[$currentBank] += $hfmFile.Name
+    $currentBankSize += $fileSize
+
+    # Add the file include line to the segments content
+    $segmentsIncContent += [System.IO.Path]::GetFileNameWithoutExtension($hfmFile) + ":`n    .include `"{0}`"`n" -f $hfmFile.Name
+}
+
+# Output the final bank's details
+Write-Host ("Bank {0:00} filled with {1} bytes." -f $currentBank, $currentBankSize)
+
+# Save the segments.inc file
+$segmentsIncFilePath = Join-Path -Path $levelsOutputFolder -ChildPath "segments.inc"
+$segmentsIncContent | Set-Content -Path $segmentsIncFilePath
+
+# Output the total size of all .hfm files
+Write-Host "Total bytes of .hfm files: $totalSize"
+
+Write-Host "Segments file 'segments.inc' created successfully."
 
 # Read the template content
 $templateContent = Get-Content -Path $templateFile
