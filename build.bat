@@ -10,7 +10,7 @@ for /f "delims=" %%a in ('type build_options.ini ^| findstr /v "^[;#\[]"') do (
 
 tools\Windows\cc65\bin\cl65 ^
   --cpu 6502x -t nes  -g -Oisr -vm -T ^
-  -C smb1base.cfg ^
+  -C generated.cfg ^
   --ld-args --dbgfile,build\smb1base.dbg ^
   --include-dir . ^
   --asm-include-dir . ^
@@ -20,3 +20,5 @@ tools\Windows\cc65\bin\cl65 ^
   -o build\smb1base.nes ^
   !options! ^
    ./src/main.c ./src/entrypoint.s
+
+pause

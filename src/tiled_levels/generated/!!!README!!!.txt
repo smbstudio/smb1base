@@ -1,0 +1,1 @@
+The contents of these folders are generated every time you build via scripts/config_generator/run.ps1.

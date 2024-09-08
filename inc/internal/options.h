@@ -28,6 +28,9 @@
 #ifndef PRINT_METASPRITE_IDS
   #define PRINT_METASPRITE_IDS 0
 #endif
+#ifndef USE_TILED_LEVELS
+  #define USE_TILED_LEVELS 0
+#endif
 
 #ifdef __NES__
 

@@ -6,3 +6,4 @@ __pycache__/
 .DS_Store
 *.mp4
 *.o
+generated.cfg
