@@ -170,9 +170,9 @@ BackSceneryData:
   .byte $9c, $aa, $00, $8b, $00, $01, $02, $03
 
 BackSceneryMetatiles:
-  .byte $80, $83, $00 ;cloud left
-  .byte $81, $84, $00 ;cloud middle
-  .byte $82, $85, $00 ;cloud right
+  .byte CLOUD_TOP_LEFT_MT, CLOUD_BOTTOM_LEFT_MT, $00 ;cloud left
+  .byte CLOUD_TOP_MIDDLE_MT, CLOUD_BOTTOM_MIDDLE_MT, $00 ;cloud middle
+  .byte CLOUD_TOP_RIGHT_MT, CLOUD_BOTTOM_RIGHT_MT, $00 ;cloud right
   .byte $02, $00, $00 ;bush left
   .byte $03, $00, $00 ;bush middle
   .byte $04, $00, $00 ;bush right

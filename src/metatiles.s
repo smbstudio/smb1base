@@ -12,6 +12,10 @@ pal1 = 1 << 6
 pal2 = 2 << 6
 pal3 = 3 << 6
 
+.macro DefineMTile name
+  .ident(name) = (* - Metatile_Definitions) / 4
+.endmacro
+
 Metatile_Definitions:
 .byte $24, $24, $24, $24 ;blank
 .byte $27, $27, $27, $27 ;black metatile
@@ -98,17 +102,23 @@ Metatile_Definitions:
 .byte $54, $64, $55, $65 ;water pipe top
 .byte $74, $84, $75, $85 ;water pipe bottom
 .byte $24, $5F, $24, $6F ;flag ball (residual object)
+DefineMTile "CLOUD_TOP_LEFT_MT"
 .byte $24, $24, $24, $30 ;cloud left
+DefineMTile "CLOUD_TOP_MIDDLE_MT"
 .byte $31, $25, $32, $25 ;cloud middle
+DefineMTile "CLOUD_TOP_RIGHT_MT"
 .byte $24, $33, $24, $24 ;cloud right
+DefineMTile "CLOUD_BOTTOM_LEFT_MT"
 .byte $24, $24, $40, $24 ;cloud bottom left
+DefineMTile "CLOUD_BOTTOM_MIDDLE_MT"
 .byte $41, $24, $42, $24 ;cloud bottom middle
+DefineMTile "CLOUD_BOTTOM_RIGHT_MT"
 .byte $43, $24, $24, $24 ;cloud bottom right
 .byte $46, $26, $46, $26 ;water/lava top
 .byte $26, $26, $26, $26 ;water/lava
-CLOUD_MT = $80 + (* - Metatile_Definitions) / 4
+DefineMTile "CLOUD_MT"
 .byte $8E, $9E, $8F, $9F ;cloud level terrain
-BRIDGE_MT = $80 + (* - Metatile_Definitions) / 4
+DefineMTile "BRIDGE_MT"
 .byte $39, $49, $39, $49 ;bowser's bridge
 .byte $A8, $B8, $A9, $B9 ;question block (coin)
 .byte $A8, $B8, $A9, $B9 ;question block (power-up)
@@ -202,7 +212,6 @@ Metatile_Attributes:
 .byte pal1 ;half brick (???)
 .byte pal1 ;water pipe top
 .byte pal1 ;water pipe bottom
-.byte pal1 ;slope indicator
 .byte pal1 ;flag ball (residual object) 
 .byte pal2 ;cloud left
 .byte pal2 ;cloud middle
