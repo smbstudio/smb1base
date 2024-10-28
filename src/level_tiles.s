@@ -170,9 +170,9 @@ BackSceneryData:
   .byte $9c, $aa, $00, $8b, $00, $01, $02, $03
 
 BackSceneryMetatiles:
-  .byte CLOUD_TOP_LEFT_MT, CLOUD_BOTTOM_LEFT_MT, $00 ;cloud left
-  .byte CLOUD_TOP_MIDDLE_MT, CLOUD_BOTTOM_MIDDLE_MT, $00 ;cloud middle
-  .byte CLOUD_TOP_RIGHT_MT, CLOUD_BOTTOM_RIGHT_MT, $00 ;cloud right
+  .byte MT_CLOUD_LEFT, MT_CLOUD_BOTTOM_LEFT, $00 ;cloud left
+  .byte MT_CLOUD_MIDDLE, MT_CLOUD_BOTTOM_MIDDLE, $00 ;cloud middle
+  .byte MT_CLOUD_RIGHT, MT_CLOUD_BOTTOM_RIGHT, $00 ;cloud right
   .byte $02, $00, $00 ;bush left
   .byte $03, $00, $00 ;bush middle
   .byte $04, $00, $00 ;bush right
@@ -351,13 +351,10 @@ RendBBuf:
 ChkMTLow:
     sty R0 
     lda MetatileBuffer,x       ;load stored metatile number
-    and #%11000000             ;mask out all but 2 MSB
-    asl
-    rol                        ;make %xx000000 into %000000xx
-    rol
-    tay                        ;use as offset in Y
-    lda MetatileBuffer,x       ;reload original unmasked value here
-    cmp BlockBuffLowBounds,y   ;check for certain values depending on bits set
+    tay
+    lda Metatile_Attributes,y
+    lsr                        ;move bg attribute bit into carry
+    tya
     bcs StrBlock               ;if equal or greater, branch
       lda #$00                   ;if less, init value before storing
 StrBlock:
@@ -371,11 +368,6 @@ StrBlock:
     cpx #$0d
     bcc ChkMTLow               ;continue until we pass last row, then leave
   rts
-
-;numbers lower than these with the same attribute bits
-;will not be stored in the block buffer
-BlockBuffLowBounds:
-  .byte $10, $51, $88, $c0
 
 .endproc
 

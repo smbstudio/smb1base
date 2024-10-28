@@ -1307,20 +1307,21 @@ ExPipeE:
 
 ;--------------------------------
 
-SolidMTileUpperExt:
-  .byte $10, $61, CLOUD_MT, $c4
-
 CheckForSolidMTiles:
-  jsr GetMTileAttrib        ;find appropriate offset based on metatile's 2 MSB
-  cmp SolidMTileUpperExt,x  ;compare current metatile with solid metatiles
+  tay
+  lda Metatile_Attributes,y
+  lsr                       ;shift solid attribute bit into carry flag
+  lsr
+  tya                       ;get original metatile value back into A
   rts
 
-ClimbMTileUpperExt:
-  .byte $24, $6d, BRIDGE_MT + 1, $c6
-
 CheckForClimbMTiles:
-  jsr GetMTileAttrib        ;find appropriate offset based on metatile's 2 MSB
-  cmp ClimbMTileUpperExt,x  ;compare current metatile with climbable metatiles
+  tay  
+  lda Metatile_Attributes,y
+  lsr                       ;shift climb attribute bit into carry flag
+  lsr
+  lsr
+  tya                       ;get original metatile value back into A
   rts
 
 CheckForCoinMTiles:
@@ -1335,18 +1336,6 @@ CoinSd:
   sta Square2SoundQueue ;load coin grab sound and leave
   rts
 
-GetMTileAttrib:
-  tay            ;save metatile value into Y
-  and #%11000000 ;mask out all but 2 MSB
-  asl
-  rol            ;shift and rotate d7-d6 to d1-d0
-  rol
-  tax            ;use as offset for metatile data
-  tya            ;get original metatile value back
-ExEBG:
-  rts            ;leave
-
-
 ;-------------------------------------------------------------------------------------
 ;$06-$07 - address from block buffer routine
 
@@ -1356,6 +1345,8 @@ EnemyBGCStateData:
 EnemyBGCXSpdData:
       .byte $10, $f0
 
+ExEBG:
+      rts
 EnemyToBGCollisionDet:
       lda Enemy_State,x        ;check enemy state for d6 set
       and #%00100000

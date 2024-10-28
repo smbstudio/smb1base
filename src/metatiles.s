@@ -1,4 +1,4 @@
-.segment "RENDER"
+.segment "FIXED"
 
 BlockGfxData:
 .byte $47, $47, $48, $48 ;brick with line
@@ -7,225 +7,425 @@ BlockGfxData:
 .byte $24, $24, $24, $24 ;air
 .byte $26, $26, $26, $26 ;air, different color
 
+interactable = 1 ;mtile is interactable
+hard = 2 ;mtile is completely hard from below (e.g. 3d solid block) 
+climbable = 4 ;mtile is climbable (e.g. residual ball block)
+
 pal0 = 0 << 6
 pal1 = 1 << 6
 pal2 = 2 << 6
 pal3 = 3 << 6
 
-.macro DefineMTile name
+.macro DefineMTile name, topleft, bottomleft, topright, bottomright, attribute
   .ident(name) = (* - Metatile_Definitions) / 4
+  .byte topleft, bottomleft, topright, bottomright
+  .ident(.concat("ATTR_OF_",name)) = attribute
 .endmacro
 
 Metatile_Definitions:
-.byte $24, $24, $24, $24 ;blank
-.byte $27, $27, $27, $27 ;black metatile
-.byte $24, $24, $24, $30 ;bush left
-.byte $31, $25, $32, $25 ;bush middle
-.byte $24, $33, $24, $24 ;bush right
-.byte $24, $34, $34, $26 ;mountain left
-.byte $26, $26, $38, $26 ;mountain left bottom/middle center
-.byte $24, $35, $24, $36 ;mountain middle top
-.byte $37, $26, $24, $37 ;mountain right
-.byte $38, $26, $26, $26 ;mountain right bottom
-.byte $26, $26, $26, $26 ;mountain middle bottom
-.byte $24, $44, $24, $44 ;bridge guardrail
-.byte $24, $CF, $CF, $24 ;chain
-.byte $3E, $4E, $3F, $4F ;tall tree top, top half
-.byte $3E, $4C, $3F, $4D ;short tree top
-.byte $4E, $4C, $4F, $4D ;tall tree top, bottom half
-.byte $50, $60, $51, $61 ;warp pipe end left, points up
-.byte $52, $62, $53, $63 ;warp pipe end right, points up
-.byte $50, $60, $51, $61 ;decoration pipe end left, points up
-.byte $52, $62, $53, $63 ;decoration pipe end right, points up
-.byte $70, $70, $71, $71 ;pipe shaft left
-.byte $26, $26, $72, $72 ;pipe shaft right
-.byte $59, $69, $5A, $6A ;tree ledge left edge
-.byte $5A, $6C, $5A, $6C ;tree ledge middle
-.byte $5A, $6A, $5B, $6B ;tree ledge right edge
-.byte $A0, $B0, $A1, $B1 ;mushroom left edge
-.byte $A2, $B2, $A3, $B3 ;mushroom middle
-.byte $A4, $B4, $A5, $B5 ;mushroom right edge
-.byte $54, $64, $55, $65 ;sideways pipe end top
-.byte $56, $66, $56, $66 ;sideways pipe shaft top
-.byte $57, $67, $71, $71 ;sideways pipe joint top
-.byte $74, $84, $75, $85 ;sideways pipe end bottom
-.byte $26, $76, $26, $76 ;sideways pipe shaft bottom
-.byte $58, $68, $71, $71 ;sideways pipe joint bottom
-.byte $8C, $9C, $8D, $9D ;seaplant
-.byte $24, $24, $24, $24 ;blank, used on bricks or blocks that are hit
-.byte $24, $5F, $24, $6F ;flagpole ball
-.byte $7D, $7D, $7E, $7E ;flagpole shaft
-.byte $24, $24, $24, $24 ;blank, used in conjunction with vines
-.byte $7D, $7D, $7E, $7E ;vertical rope
-.byte $5C, $24, $5C, $24 ;horizontal rope
-.byte $24, $7D, $5D, $6D ;left pulley
-.byte $5E, $6E, $24, $7E ;right pulley
-.byte $24, $24, $24, $24 ;blank used for balance rope
-.byte $77, $48, $78, $48 ;castle top
-.byte $48, $48, $27, $27 ;castle window left
-.byte $48, $48, $48, $48 ;castle brick wall
-.byte $27, $27, $48, $48 ;castle window right
-.byte $79, $48, $7A, $48 ;castle top w/ brick
-.byte $7B, $27, $7C, $27 ;entrance top
-.byte $27, $27, $27, $27 ;entrance bottom
-.byte $73, $73, $73, $73 ;green ledge stump
-.byte $3A, $4A, $3B, $4B ;fence
-.byte $3C, $3C, $3D, $3D ;tree trunk
-.byte $A6, $4E, $A7, $4F ;mushroom stump top
-.byte $4E, $4E, $4F, $4F ;mushroom stump bottom
-.byte $47, $48, $47, $48 ;breakable brick w/ line 
-.byte $48, $48, $48, $48 ;breakable brick 
-.byte $47, $48, $47, $48 ;breakable brick (not used)
-.byte $82, $92, $83, $93 ;cracked rock terrain
-.byte $47, $48, $47, $48 ;brick with line (power-up)
-.byte $47, $48, $47, $48 ;brick with line (vine)
-.byte $47, $48, $47, $48 ;brick with line (star)
-.byte $47, $48, $47, $48 ;brick with line (coins)
-.byte $47, $48, $47, $48 ;brick with line (1-up)
-.byte $48, $48, $48, $48 ;brick (power-up)
-.byte $48, $48, $48, $48 ;brick (vine)
-.byte $48, $48, $48, $48 ;brick (star)
-.byte $48, $48, $48, $48 ;brick (coins)
-.byte $48, $48, $48, $48 ;brick (1-up)
-.byte $24, $24, $24, $24 ;hidden block (1 coin)
-.byte $24, $24, $24, $24 ;hidden block (1-up)
-.byte $80, $90, $81, $91 ;solid block (3-d block)
-.byte $B6, $B7, $B6, $B7 ;solid block (white wall)
-.byte $45, $24, $45, $24 ;bridge
-.byte $86, $96, $87, $97 ;bullet bill cannon barrel
-.byte $88, $98, $89, $99 ;bullet bill cannon top
-.byte $94, $94, $95, $95 ;bullet bill cannon bottom
-.byte $24, $24, $24, $24 ;blank used for jumpspring
-.byte $24, $48, $24, $48 ;half brick used for jumpspring
-.byte $8A, $9A, $8B, $9B ;solid block (water level, green rock)
-.byte $24, $48, $24, $48 ;half brick (???)
-.byte $54, $64, $55, $65 ;water pipe top
-.byte $74, $84, $75, $85 ;water pipe bottom
-.byte $24, $5F, $24, $6F ;flag ball (residual object)
-DefineMTile "CLOUD_TOP_LEFT_MT"
-.byte $24, $24, $24, $30 ;cloud left
-DefineMTile "CLOUD_TOP_MIDDLE_MT"
-.byte $31, $25, $32, $25 ;cloud middle
-DefineMTile "CLOUD_TOP_RIGHT_MT"
-.byte $24, $33, $24, $24 ;cloud right
-DefineMTile "CLOUD_BOTTOM_LEFT_MT"
-.byte $24, $24, $40, $24 ;cloud bottom left
-DefineMTile "CLOUD_BOTTOM_MIDDLE_MT"
-.byte $41, $24, $42, $24 ;cloud bottom middle
-DefineMTile "CLOUD_BOTTOM_RIGHT_MT"
-.byte $43, $24, $24, $24 ;cloud bottom right
-.byte $46, $26, $46, $26 ;water/lava top
-.byte $26, $26, $26, $26 ;water/lava
-DefineMTile "CLOUD_MT"
-.byte $8E, $9E, $8F, $9F ;cloud level terrain
-DefineMTile "BRIDGE_MT"
-.byte $39, $49, $39, $49 ;bowser's bridge
-.byte $A8, $B8, $A9, $B9 ;question block (coin)
-.byte $A8, $B8, $A9, $B9 ;question block (power-up)
-.byte $AA, $BA, $AB, $BB ;coin
-.byte $AC, $BC, $AD, $BD ;underwater coin
-.byte $AE, $BE, $AF, $BF ;empty block
-.byte $CB, $CD, $CC, $CE ;axe
+DefineMTile "MT_BLANK", \
+  $24, $24, $24, $24, \
+  pal0
+DefineMTile "MT_BLACK_METATILE", \
+  $27, $27, $27, $27, \
+  pal0
+DefineMTile "MT_BUSH_LEFT", \
+  $24, $24, $24, $30, \
+  pal0
+DefineMTile "MT_BUSH_MIDDLE", \
+  $31, $25, $32, $25, \
+  pal0
+DefineMTile "MT_BUSH_RIGHT", \
+  $24, $33, $24, $24, \
+  pal0
+DefineMTile "MT_MOUNTAIN_LEFT", \
+  $24, $34, $34, $26, \
+  pal0
+DefineMTile "MT_MOUNTAIN_LEFT_BOTTOM_MIDDLE_CENTER", \
+  $26, $26, $38, $26, \
+  pal0
+DefineMTile "MT_MOUNTAIN_MIDDLE_TOP", \
+  $24, $35, $24, $36, \
+  pal0
+DefineMTile "MT_MOUNTAIN_RIGHT", \
+  $37, $26, $24, $37, \
+  pal0
+DefineMTile "MT_MOUNTAIN_RIGHT_BOTTOM", \
+  $38, $26, $26, $26, \
+  pal0
+DefineMTile "MT_MOUNTAIN_MIDDLE_BOTTOM", \
+  $26, $26, $26, $26, \
+  pal0
+DefineMTile "MT_BRIDGE_GUARDRAIL", \
+  $24, $44, $24, $44, \
+  pal0
+DefineMTile "MT_CHAIN", \
+  $24, $CF, $CF, $24, \
+  pal0
+DefineMTile "MT_TALL_TREE_TOP_AND_TOP_HALF", \
+  $3E, $4E, $3F, $4F, \
+  pal0
+DefineMTile "MT_SHORT_TREE_TOP", \
+  $3E, $4C, $3F, $4D, \
+  pal0
+DefineMTile "MT_TALL_TREE_TOP_AND_BOTTOM_HALF", \
+  $4E, $4C, $4F, $4D, \
+  pal0
+DefineMTile "MT_WARP_PIPE_END_LEFT_AND_POINTS_UP", \
+  $50, $60, $51, $61, \
+  pal0 + interactable + hard
+DefineMTile "MT_WARP_PIPE_END_RIGHT_AND_POINTS_UP", \
+  $52, $62, $53, $63, \
+  pal0 + interactable + hard
+DefineMTile "MT_DECORATION_PIPE_END_LEFT_AND_POINTS_UP", \
+  $50, $60, $51, $61, \
+  pal0 + interactable + hard
+DefineMTile "MT_DECORATION_PIPE_END_RIGHT_AND_POINTS_UP", \
+  $52, $62, $53, $63, \
+  pal0 + interactable + hard
+DefineMTile "MT_PIPE_SHAFT_LEFT", \
+  $70, $70, $71, $71, \
+  pal0 + interactable + hard
+DefineMTile "MT_PIPE_SHAFT_RIGHT", \
+  $26, $26, $72, $72, \
+  pal0 + interactable + hard
+DefineMTile "MT_TREE_LEDGE_LEFT_EDGE", \
+  $59, $69, $5A, $6A, \
+  pal0 + interactable + hard
+DefineMTile "MT_TREE_LEDGE_MIDDLE", \
+  $5A, $6C, $5A, $6C, \
+  pal0 + interactable + hard
+DefineMTile "MT_TREE_LEDGE_RIGHT_EDGE", \
+  $5A, $6A, $5B, $6B, \
+  pal0 + interactable + hard
+DefineMTile "MT_MUSHROOM_LEFT_EDGE", \
+  $A0, $B0, $A1, $B1, \
+  pal0 + interactable + hard
+DefineMTile "MT_MUSHROOM_MIDDLE", \
+  $A2, $B2, $A3, $B3, \
+  pal0 + interactable + hard
+DefineMTile "MT_MUSHROOM_RIGHT_EDGE", \
+  $A4, $B4, $A5, $B5, \
+  pal0 + interactable + hard
+DefineMTile "MT_SIDEWAYS_PIPE_END_TOP", \
+  $54, $64, $55, $65, \
+  pal0 + interactable + hard
+DefineMTile "MT_SIDEWAYS_PIPE_SHAFT_TOP", \
+  $56, $66, $56, $66, \
+  pal0 + interactable + hard
+DefineMTile "MT_SIDEWAYS_PIPE_JOINT_TOP", \
+  $57, $67, $71, $71, \
+  pal0 + interactable + hard
+DefineMTile "MT_SIDEWAYS_PIPE_END_BOTTOM", \
+  $74, $84, $75, $85, \
+  pal0 + interactable + hard
+DefineMTile "MT_SIDEWAYS_PIPE_SHAFT_BOTTOM", \
+  $26, $76, $26, $76, \
+  pal0 + interactable + hard
+DefineMTile "MT_SIDEWAYS_PIPE_JOINT_BOTTOM", \
+  $58, $68, $71, $71, \
+  pal0 + interactable + hard
+DefineMTile "MT_SEAPLANT", \
+  $8C, $9C, $8D, $9D, \
+  pal0 + interactable + hard
+DefineMTile "MT_BLANK_USED_ON_BRICKS_OR_BLOCKS_THAT_ARE_HIT", \
+  $24, $24, $24, $24, \
+  pal0 + interactable + hard
+DefineMTile "MT_FLAGPOLE_BALL", \
+  $24, $5F, $24, $6F, \
+  pal0 + interactable + hard + climbable
+DefineMTile "MT_FLAGPOLE_SHAFT", \
+  $7D, $7D, $7E, $7E, \
+  pal0 + interactable + hard + climbable
+DefineMTile "MT_BLANK_USED_IN_CONJUNCTION_WITH_VINES", \
+  $24, $24, $24, $24, \
+  pal0 + interactable + hard + climbable
+DefineMTile "MT_VERTICAL_ROPE", \
+  $7D, $7D, $7E, $7E, \
+  pal1
+DefineMTile "MT_HORIZONTAL_ROPE", \
+  $5C, $24, $5C, $24, \
+  pal1
+DefineMTile "MT_LEFT_PULLEY", \
+  $24, $7D, $5D, $6D, \
+  pal1
+DefineMTile "MT_RIGHT_PULLEY", \
+  $5E, $6E, $24, $7E, \
+  pal1
+DefineMTile "MT_BLANK_USED_FOR_BALANCE_ROPE", \
+  $24, $24, $24, $24, \
+  pal1
+DefineMTile "MT_CASTLE_TOP", \
+  $77, $48, $78, $48, \
+  pal1
+DefineMTile "MT_CASTLE_WINDOW_LEFT", \
+  $48, $48, $27, $27, \
+  pal1
+DefineMTile "MT_CASTLE_BRICK_WALL", \
+  $48, $48, $48, $48, \
+  pal1
+DefineMTile "MT_CASTLE_WINDOW_RIGHT", \
+  $27, $27, $48, $48, \
+  pal1
+DefineMTile "MT_CASTLE_TOP_WITH_BRICK", \
+  $79, $48, $7A, $48, \
+  pal1
+DefineMTile "MT_ENTRANCE_TOP", \
+  $7B, $27, $7C, $27, \
+  pal1
+DefineMTile "MT_ENTRANCE_BOTTOM", \
+  $27, $27, $27, $27, \
+  pal1
+DefineMTile "MT_GREEN_LEDGE_STUMP", \
+  $73, $73, $73, $73, \
+  pal1
+DefineMTile "MT_FENCE", \
+  $3A, $4A, $3B, $4B, \
+  pal1
+DefineMTile "MT_TREE_TRUNK", \
+  $3C, $3C, $3D, $3D, \
+  pal1
+DefineMTile "MT_MUSHROOM_STUMP_TOP", \
+  $A6, $4E, $A7, $4F, \
+  pal1
+DefineMTile "MT_MUSHROOM_STUMP_BOTTOM", \
+  $4E, $4E, $4F, $4F, \
+  pal1
+DefineMTile "MT_BREAKABLE_BRICK_WITH_LINE", \
+  $47, $48, $47, $48, \
+  pal1 + interactable
+DefineMTile "MT_BREAKABLE_BRICK", \
+  $48, $48, $48, $48, \
+  pal1 + interactable
+DefineMTile "MT_BREAKABLE_BRICK_NOT_USED", \
+  $47, $48, $47, $48, \
+  pal1 + interactable
+DefineMTile "MT_CRACKED_ROCK_TERRAIN", \
+  $82, $92, $83, $93, \
+  pal1 + interactable
+DefineMTile "MT_BRICK_WITH_LINE_POWER_UP", \
+  $47, $48, $47, $48, \
+  pal1 + interactable
+DefineMTile "MT_BRICK_WITH_LINE_VINE", \
+  $47, $48, $47, $48, \
+  pal1 + interactable
+DefineMTile "MT_BRICK_WITH_LINE_STAR", \
+  $47, $48, $47, $48, \
+  pal1 + interactable
+DefineMTile "MT_BRICK_WITH_LINE_COINS", \
+  $47, $48, $47, $48, \
+  pal1 + interactable
+DefineMTile "MT_BRICK_WITH_LINE_1_UP", \
+  $47, $48, $47, $48, \
+  pal1 + interactable
+DefineMTile "MT_BRICK_POWER_UP", \
+  $48, $48, $48, $48, \
+  pal1 + interactable
+DefineMTile "MT_BRICK_VINE", \
+  $48, $48, $48, $48, \
+  pal1 + interactable
+DefineMTile "MT_BRICK_STAR", \
+  $48, $48, $48, $48, \
+  pal1 + interactable
+DefineMTile "MT_BRICK_COINS", \
+  $48, $48, $48, $48, \
+  pal1 + interactable
+DefineMTile "MT_BRICK_1_UP", \
+  $48, $48, $48, $48, \
+  pal1 + interactable
+DefineMTile "MT_HIDDEN_BLOCK_1_COIN", \
+  $24, $24, $24, $24, \
+  pal1 + interactable
+DefineMTile "MT_HIDDEN_BLOCK_1_UP", \
+  $24, $24, $24, $24, \
+  pal1 + interactable
+DefineMTile "MT_SOLID_BLOCK_3D_BLOCK", \
+  $80, $90, $81, $91, \
+  pal1 + interactable + hard
+DefineMTile "MT_SOLID_BLOCK_WHITE_WALL", \
+  $B6, $B7, $B6, $B7, \
+  pal1 + interactable + hard
+DefineMTile "MT_BRIDGE", \
+  $45, $24, $45, $24, \
+  pal1 + interactable + hard
+DefineMTile "MT_BULLET_BILL_CANNON_BARREL", \
+  $86, $96, $87, $97, \
+  pal1 + interactable + hard
+DefineMTile "MT_BULLET_BILL_CANNON_TOP", \
+  $88, $98, $89, $99, \
+  pal1 + interactable + hard
+DefineMTile "MT_BULLET_BILL_CANNON_BOTTOM", \
+  $94, $94, $95, $95, \
+  pal1 + interactable + hard
+DefineMTile "MT_BLANK_USED_FOR_JUMPSPRING", \
+  $24, $24, $24, $24, \
+  pal1 + interactable + hard
+DefineMTile "MT_HALF_BRICK_USED_FOR_JUMPSPRING", \
+  $24, $48, $24, $48, \
+  pal1 + interactable + hard
+DefineMTile "MT_SOLID_BLOCK_WATER_LEVEL_GREEN_ROCK", \
+  $8A, $9A, $8B, $9B, \
+  pal1 + interactable + hard
+DefineMTile "MT_HALF_BRICK", \
+  $24, $48, $24, $48, \
+  pal1 + interactable + hard
+DefineMTile "MT_WATER_PIPE_TOP", \
+  $54, $64, $55, $65, \
+  pal1 + interactable + hard
+DefineMTile "MT_WATER_PIPE_BOTTOM", \
+  $74, $84, $75, $85, \
+  pal1 + interactable + hard
+DefineMTile "MT_FLAG_BALL_RESIDUAL_OBJECT", \
+  $24, $5F, $24, $6F, \
+  pal1 + interactable + hard + climbable
+DefineMTile "MT_CLOUD_LEFT", \
+  $24, $24, $24, $30, \
+  pal2
+DefineMTile "MT_CLOUD_MIDDLE", \
+  $31, $25, $32, $25, \
+  pal2
+DefineMTile "MT_CLOUD_RIGHT", \
+  $24, $33, $24, $24, \
+  pal2
+DefineMTile "MT_CLOUD_BOTTOM_LEFT", \
+  $24, $24, $40, $24, \
+  pal2
+DefineMTile "MT_CLOUD_BOTTOM_MIDDLE", \
+  $41, $24, $42, $24, \
+  pal2
+DefineMTile "MT_CLOUD_BOTTOM_RIGHT", \
+  $43, $24, $24, $24, \
+  pal2
+DefineMTile "MT_WATER_OR_LAVA_TOP", \
+  $46, $26, $46, $26, \
+  pal2
+DefineMTile "MT_WATER_OR_LAVA", \
+  $26, $26, $26, $26, \
+  pal2
+DefineMTile "MT_CLOUD_LEVEL_TERRAIN", \
+  $8E, $9E, $8F, $9F, \
+  pal2 + interactable + hard
+DefineMTile "MT_BOWSERS_BRIDGE", \
+  $39, $49, $39, $49, \
+  pal2 + interactable + hard
+DefineMTile "MT_QUESTION_BLOCK_COIN", \
+  $A8, $B8, $A9, $B9, \
+  pal3 + interactable
+DefineMTile "MT_QUESTION_BLOCK_POWER_UP", \
+  $A8, $B8, $A9, $B9, \
+  pal3 + interactable
+DefineMTile "MT_COIN", \
+  $AA, $BA, $AB, $BB, \
+  pal3 + interactable
+DefineMTile "MT_UNDERWATER_COIN", \
+  $AC, $BC, $AD, $BD, \
+  pal3 + interactable
+DefineMTile "MT_EMPTY_BLOCK", \
+  $AE, $BE, $AF, $BF, \
+  pal3 + interactable + hard
+DefineMTile "MT_AXE", \
+  $CB, $CD, $CC, $CE, \
+  pal3 + interactable + hard
 
 Metatile_Attributes:
-.byte pal0 ;blank
-.byte pal0 ;black metatile
-.byte pal0 ;bush left
-.byte pal0 ;bush middle
-.byte pal0 ;bush right
-.byte pal0 ;mountain left
-.byte pal0 ;mountain left bottom/middle center
-.byte pal0 ;mountain middle top
-.byte pal0 ;mountain right
-.byte pal0 ;mountain right bottom
-.byte pal0 ;mountain middle bottom
-.byte pal0 ;bridge guardrail
-.byte pal0 ;chain
-.byte pal0 ;tall tree top, top half
-.byte pal0 ;short tree top
-.byte pal0 ;tall tree top, bottom half
-.byte pal0 ;warp pipe end left, points up
-.byte pal0 ;warp pipe end right, points up
-.byte pal0 ;decoration pipe end left, points up
-.byte pal0 ;decoration pipe end right, points up
-.byte pal0 ;pipe shaft left
-.byte pal0 ;pipe shaft right
-.byte pal0 ;tree ledge left edge
-.byte pal0 ;tree ledge middle
-.byte pal0 ;tree ledge right edge
-.byte pal0 ;mushroom left edge
-.byte pal0 ;mushroom middle
-.byte pal0 ;mushroom right edge
-.byte pal0 ;sideways pipe end top
-.byte pal0 ;sideways pipe shaft top
-.byte pal0 ;sideways pipe joint top
-.byte pal0 ;sideways pipe end bottom
-.byte pal0 ;sideways pipe shaft bottom
-.byte pal0 ;sideways pipe joint bottom
-.byte pal0 ;seaplant
-.byte pal0 ;blank, used on bricks or blocks that are hit
-.byte pal0 ;flagpole ball
-.byte pal0 ;flagpole shaft
-.byte pal0 ;blank, used in conjunction with vines
-.byte pal1 ;vertical rope
-.byte pal1 ;horizontal rope
-.byte pal1 ;left pulley
-.byte pal1 ;right pulley
-.byte pal1 ;blank used for balance rope
-.byte pal1 ;castle top
-.byte pal1 ;castle window left
-.byte pal1 ;castle brick wall
-.byte pal1 ;castle window right
-.byte pal1 ;castle top w/ brick
-.byte pal1 ;entrance top
-.byte pal1 ;entrance bottom
-.byte pal1 ;green ledge stump
-.byte pal1 ;fence
-.byte pal1 ;tree trunk
-.byte pal1 ;mushroom stump top
-.byte pal1 ;mushroom stump bottom
-.byte pal1 ;breakable brick w/ line 
-.byte pal1 ;breakable brick 
-.byte pal1 ;breakable brick (not used)
-.byte pal1 ;cracked rock terrain
-.byte pal1 ;brick with line (power-up)
-.byte pal1 ;brick with line (vine)
-.byte pal1 ;brick with line (star)
-.byte pal1 ;brick with line (coins)
-.byte pal1 ;brick with line (1-up)
-.byte pal1 ;brick (power-up)
-.byte pal1 ;brick (vine)
-.byte pal1 ;brick (star)
-.byte pal1 ;brick (coins)
-.byte pal1 ;brick (1-up)
-.byte pal1 ;hidden block (1 coin)
-.byte pal1 ;hidden block (1-up)
-.byte pal1 ;solid block (3-d block)
-.byte pal1 ;solid block (white wall)
-.byte pal1 ;bridge
-.byte pal1 ;bullet bill cannon barrel
-.byte pal1 ;bullet bill cannon top
-.byte pal1 ;bullet bill cannon bottom
-.byte pal1 ;blank used for jumpspring
-.byte pal1 ;half brick used for jumpspring
-.byte pal1 ;solid block (water level, green rock)
-.byte pal1 ;half brick (???)
-.byte pal1 ;water pipe top
-.byte pal1 ;water pipe bottom
-.byte pal1 ;flag ball (residual object) 
-.byte pal2 ;cloud left
-.byte pal2 ;cloud middle
-.byte pal2 ;cloud right
-.byte pal2 ;cloud bottom left
-.byte pal2 ;cloud bottom middle
-.byte pal2 ;cloud bottom right
-.byte pal2 ;water/lava top
-.byte pal2 ;water/lava
-.byte pal2 ;cloud level terrain
-.byte pal2 ;bowser's bridge
-.byte pal3 ;question block (coin)
-.byte pal3 ;question block (power-up)
-.byte pal3 ;coin
-.byte pal3 ;underwater coin
-.byte pal3 ;empty block
-.byte pal3 ;axe
+.byte ATTR_OF_MT_BLANK
+.byte ATTR_OF_MT_BLACK_METATILE
+.byte ATTR_OF_MT_BUSH_LEFT
+.byte ATTR_OF_MT_BUSH_MIDDLE
+.byte ATTR_OF_MT_BUSH_RIGHT
+.byte ATTR_OF_MT_MOUNTAIN_LEFT
+.byte ATTR_OF_MT_MOUNTAIN_LEFT_BOTTOM_MIDDLE_CENTER
+.byte ATTR_OF_MT_MOUNTAIN_MIDDLE_TOP
+.byte ATTR_OF_MT_MOUNTAIN_RIGHT
+.byte ATTR_OF_MT_MOUNTAIN_RIGHT_BOTTOM
+.byte ATTR_OF_MT_MOUNTAIN_MIDDLE_BOTTOM
+.byte ATTR_OF_MT_BRIDGE_GUARDRAIL
+.byte ATTR_OF_MT_CHAIN
+.byte ATTR_OF_MT_TALL_TREE_TOP_AND_TOP_HALF
+.byte ATTR_OF_MT_SHORT_TREE_TOP
+.byte ATTR_OF_MT_TALL_TREE_TOP_AND_BOTTOM_HALF
+.byte ATTR_OF_MT_WARP_PIPE_END_LEFT_AND_POINTS_UP
+.byte ATTR_OF_MT_WARP_PIPE_END_RIGHT_AND_POINTS_UP
+.byte ATTR_OF_MT_DECORATION_PIPE_END_LEFT_AND_POINTS_UP
+.byte ATTR_OF_MT_DECORATION_PIPE_END_RIGHT_AND_POINTS_UP
+.byte ATTR_OF_MT_PIPE_SHAFT_LEFT
+.byte ATTR_OF_MT_PIPE_SHAFT_RIGHT
+.byte ATTR_OF_MT_TREE_LEDGE_LEFT_EDGE
+.byte ATTR_OF_MT_TREE_LEDGE_MIDDLE
+.byte ATTR_OF_MT_TREE_LEDGE_RIGHT_EDGE
+.byte ATTR_OF_MT_MUSHROOM_LEFT_EDGE
+.byte ATTR_OF_MT_MUSHROOM_MIDDLE
+.byte ATTR_OF_MT_MUSHROOM_RIGHT_EDGE
+.byte ATTR_OF_MT_SIDEWAYS_PIPE_END_TOP
+.byte ATTR_OF_MT_SIDEWAYS_PIPE_SHAFT_TOP
+.byte ATTR_OF_MT_SIDEWAYS_PIPE_JOINT_TOP
+.byte ATTR_OF_MT_SIDEWAYS_PIPE_END_BOTTOM
+.byte ATTR_OF_MT_SIDEWAYS_PIPE_SHAFT_BOTTOM
+.byte ATTR_OF_MT_SIDEWAYS_PIPE_JOINT_BOTTOM
+.byte ATTR_OF_MT_SEAPLANT
+.byte ATTR_OF_MT_BLANK_USED_ON_BRICKS_OR_BLOCKS_THAT_ARE_HIT
+.byte ATTR_OF_MT_FLAGPOLE_BALL
+.byte ATTR_OF_MT_FLAGPOLE_SHAFT
+.byte ATTR_OF_MT_BLANK_USED_IN_CONJUNCTION_WITH_VINES
+.byte ATTR_OF_MT_VERTICAL_ROPE
+.byte ATTR_OF_MT_HORIZONTAL_ROPE
+.byte ATTR_OF_MT_LEFT_PULLEY
+.byte ATTR_OF_MT_RIGHT_PULLEY
+.byte ATTR_OF_MT_BLANK_USED_FOR_BALANCE_ROPE
+.byte ATTR_OF_MT_CASTLE_TOP
+.byte ATTR_OF_MT_CASTLE_WINDOW_LEFT
+.byte ATTR_OF_MT_CASTLE_BRICK_WALL
+.byte ATTR_OF_MT_CASTLE_WINDOW_RIGHT
+.byte ATTR_OF_MT_CASTLE_TOP_WITH_BRICK
+.byte ATTR_OF_MT_ENTRANCE_TOP
+.byte ATTR_OF_MT_ENTRANCE_BOTTOM
+.byte ATTR_OF_MT_GREEN_LEDGE_STUMP
+.byte ATTR_OF_MT_FENCE
+.byte ATTR_OF_MT_TREE_TRUNK
+.byte ATTR_OF_MT_MUSHROOM_STUMP_TOP
+.byte ATTR_OF_MT_MUSHROOM_STUMP_BOTTOM
+.byte ATTR_OF_MT_BREAKABLE_BRICK_WITH_LINE
+.byte ATTR_OF_MT_BREAKABLE_BRICK
+.byte ATTR_OF_MT_BREAKABLE_BRICK_NOT_USED
+.byte ATTR_OF_MT_CRACKED_ROCK_TERRAIN
+.byte ATTR_OF_MT_BRICK_WITH_LINE_POWER_UP
+.byte ATTR_OF_MT_BRICK_WITH_LINE_VINE
+.byte ATTR_OF_MT_BRICK_WITH_LINE_STAR
+.byte ATTR_OF_MT_BRICK_WITH_LINE_COINS
+.byte ATTR_OF_MT_BRICK_WITH_LINE_1_UP
+.byte ATTR_OF_MT_BRICK_POWER_UP
+.byte ATTR_OF_MT_BRICK_VINE
+.byte ATTR_OF_MT_BRICK_STAR
+.byte ATTR_OF_MT_BRICK_COINS
+.byte ATTR_OF_MT_BRICK_1_UP
+.byte ATTR_OF_MT_HIDDEN_BLOCK_1_COIN
+.byte ATTR_OF_MT_HIDDEN_BLOCK_1_UP
+.byte ATTR_OF_MT_SOLID_BLOCK_3D_BLOCK
+.byte ATTR_OF_MT_SOLID_BLOCK_WHITE_WALL
+.byte ATTR_OF_MT_BRIDGE
+.byte ATTR_OF_MT_BULLET_BILL_CANNON_BARREL
+.byte ATTR_OF_MT_BULLET_BILL_CANNON_TOP
+.byte ATTR_OF_MT_BULLET_BILL_CANNON_BOTTOM
+.byte ATTR_OF_MT_BLANK_USED_FOR_JUMPSPRING
+.byte ATTR_OF_MT_HALF_BRICK_USED_FOR_JUMPSPRING
+.byte ATTR_OF_MT_SOLID_BLOCK_WATER_LEVEL_GREEN_ROCK
+.byte ATTR_OF_MT_HALF_BRICK
+.byte ATTR_OF_MT_WATER_PIPE_TOP
+.byte ATTR_OF_MT_WATER_PIPE_BOTTOM
+.byte ATTR_OF_MT_FLAG_BALL_RESIDUAL_OBJECT
+.byte ATTR_OF_MT_CLOUD_LEFT
+.byte ATTR_OF_MT_CLOUD_MIDDLE
+.byte ATTR_OF_MT_CLOUD_RIGHT
+.byte ATTR_OF_MT_CLOUD_BOTTOM_LEFT
+.byte ATTR_OF_MT_CLOUD_BOTTOM_MIDDLE
+.byte ATTR_OF_MT_CLOUD_BOTTOM_RIGHT
+.byte ATTR_OF_MT_WATER_OR_LAVA_TOP
+.byte ATTR_OF_MT_WATER_OR_LAVA
+.byte ATTR_OF_MT_CLOUD_LEVEL_TERRAIN
+.byte ATTR_OF_MT_BOWSERS_BRIDGE
+.byte ATTR_OF_MT_QUESTION_BLOCK_COIN
+.byte ATTR_OF_MT_QUESTION_BLOCK_POWER_UP
+.byte ATTR_OF_MT_COIN
+.byte ATTR_OF_MT_UNDERWATER_COIN
+.byte ATTR_OF_MT_EMPTY_BLOCK
+.byte ATTR_OF_MT_AXE
