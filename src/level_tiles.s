@@ -173,31 +173,70 @@ BackSceneryMetatiles:
   .byte MT_CLOUD_LEFT, MT_CLOUD_BOTTOM_LEFT, $00 ;cloud left
   .byte MT_CLOUD_MIDDLE, MT_CLOUD_BOTTOM_MIDDLE, $00 ;cloud middle
   .byte MT_CLOUD_RIGHT, MT_CLOUD_BOTTOM_RIGHT, $00 ;cloud right
-  .byte $02, $00, $00 ;bush left
-  .byte $03, $00, $00 ;bush middle
-  .byte $04, $00, $00 ;bush right
-  .byte $00, $05, $06 ;mountain left
-  .byte $07, $06, $0a ;mountain middle
-  .byte $00, $08, $09 ;mountain right
-  .byte $4d, $00, $00 ;fence
-  .byte $0d, $0f, $4e ;tall tree
-  .byte $0e, $4e, $4e ;short tree
+  .byte MT_BUSH_LEFT, $00, $00 ;bush left
+  .byte MT_BUSH_MIDDLE, $00, $00 ;bush middle
+  .byte MT_BUSH_RIGHT, $00, $00 ;bush right
+  .byte $00, MT_MOUNTAIN_LEFT, MT_MOUNTAIN_LEFT_BOTTOM_MIDDLE_CENTER ;mountain left
+  .byte MT_MOUNTAIN_MIDDLE_TOP, MT_MOUNTAIN_LEFT_BOTTOM_MIDDLE_CENTER, MT_MOUNTAIN_MIDDLE_BOTTOM ;mountain middle
+  .byte $00, MT_MOUNTAIN_RIGHT, MT_MOUNTAIN_RIGHT_BOTTOM ;mountain right
+  .byte MT_FENCE, $00, $00 ;fence
+  .byte MT_TALL_TREE_TOP_AND_TOP_HALF, MT_TALL_TREE_TOP_AND_BOTTOM_HALF, MT_TREE_TRUNK ;tall tree
+  .byte MT_SHORT_TREE_TOP, MT_TREE_TRUNK, MT_TREE_TRUNK ;short tree
 
 FSceneDataOffsets:
   .byte $00, $0d, $1a
 
 ForeSceneryData:
-  .byte $86, $87, $87, $87, $87, $87, $87   ;in water
-  .byte $87, $87, $87, $87, $69, $69
+;in water
+  .byte MT_WATER_OR_LAVA_TOP
+  .byte MT_WATER_OR_LAVA
+  .byte MT_WATER_OR_LAVA
+  .byte MT_WATER_OR_LAVA
+  .byte MT_WATER_OR_LAVA
+  .byte MT_WATER_OR_LAVA
+  .byte MT_WATER_OR_LAVA   
+  .byte MT_WATER_OR_LAVA
+  .byte MT_WATER_OR_LAVA
+  .byte MT_WATER_OR_LAVA
+  .byte MT_WATER_OR_LAVA
+  .byte MT_SOLID_BLOCK_WATER_LEVEL_GREEN_ROCK
+  .byte MT_SOLID_BLOCK_WATER_LEVEL_GREEN_ROCK
 
-  .byte $00, $00, $00, $00, $00, $45, $47   ;wall
-  .byte $47, $47, $47, $47, $00, $00
+;wall
+  .byte $00
+  .byte $00
+  .byte $00
+  .byte $00
+  .byte $00
+  .byte MT_CASTLE_TOP
+  .byte MT_CASTLE_BRICK_WALL   
+  .byte MT_CASTLE_BRICK_WALL
+  .byte MT_CASTLE_BRICK_WALL
+  .byte MT_CASTLE_BRICK_WALL
+  .byte MT_CASTLE_BRICK_WALL
+  .byte $00
+  .byte $00
 
-  .byte $00, $00, $00, $00, $00, $00, $00   ;over water
-  .byte $00, $00, $00, $00, $86, $87
+;over water
+  .byte $00
+  .byte $00
+  .byte $00
+  .byte $00
+  .byte $00
+  .byte $00
+  .byte $00   
+  .byte $00
+  .byte $00
+  .byte $00
+  .byte $00
+  .byte MT_WATER_OR_LAVA_TOP
+  .byte MT_WATER_OR_LAVA
 
 TerrainMetatiles:
-  .byte $69, $54, $52, $62
+  .byte MT_SOLID_BLOCK_WATER_LEVEL_GREEN_ROCK
+  .byte MT_CRACKED_ROCK_TERRAIN
+  .byte MT_BREAKABLE_BRICK
+  .byte MT_SOLID_BLOCK_WHITE_WALL
 
 TerrainRenderBits:
   .byte %00000000, %00000000 ;no ceiling or floor
@@ -292,13 +331,13 @@ RendTerr:
         lda WorldNumber            ;check world number, if not world number eight
         cmp #World8                ;then skip this part
         bne TerMTile
-          lda #$62                   ;if set as water level and world number eight,
+          lda #MT_SOLID_BLOCK_WHITE_WALL ;if set as water level and world number eight,
           jmp StoreMT                ;use castle wall metatile as terrain type
 TerMTile:
       lda TerrainMetatiles,y     ;otherwise get appropriate metatile for area type
       ldy CloudTypeOverride      ;check for cloud type override
       beq StoreMT                ;if not set, keep value otherwise
-        lda #$88                   ;use cloud block terrain
+        lda #MT_CLOUD_LEVEL_TERRAIN ;use cloud block terrain
 StoreMT:
       sta R7                     ;store value here
       ldx #$00                   ;initialize X, use as metatile buffer offset
@@ -334,7 +373,7 @@ NextTBit:
         bne EndUChk                ;if not underground, skip this part
           cpx #$0b
           bne EndUChk                ;if we're at the bottom of the screen, override
-            lda #$54                   ;old terrain type with ground level terrain type
+            lda #MT_CRACKED_ROCK_TERRAIN  ;old terrain type with ground level terrain type
             sta R7 
 EndUChk:
     iny                        ;increment bitmasks offset in Y
@@ -475,7 +514,7 @@ ChkRow13: cmp #$0d                   ;row 13?
           beq LeavePar               ;if d6 clear, branch to leave (we handled this earlier)
           lda (AreaData),y           ;otherwise, get byte again
           and #%01111111             ;mask out d7
-          cmp #$4b                   ;check for loop command in low nybble
+          cmp #MT_ENTRANCE_BOTTOM                   ;check for loop command in low nybble
           bne Mask2MSB               ;(plus d6 set for object other than page control)
           inc LoopCommand            ;if loop command, set loop command flag
 Mask2MSB: and #%00111111             ;mask out d7 and d6
@@ -1139,7 +1178,7 @@ E_CastleArea2:
 
 ;level 2-4/5-4
 E_CastleArea3:
-      .byte $0b, $8c, $4b, $4c, $77, $5f, $eb, $0c, $bd, $db
+      .byte $0b, $8c, MT_ENTRANCE_BOTTOM, $4c, $77, $5f, $eb, $0c, $bd, $db
       .byte $19, $9d, $75, $1d, $7d, $5b, $d9, $1d, $3d, $dd
       .byte $99, $1d, $26, $9d, $5a, $2b, $8a, $2c, $ca, $1b
       .byte $20, $95, $7b, $5c, $db, $4c, $1b, $cc, $3b, $cc
@@ -1157,8 +1196,8 @@ E_CastleArea4:
 
 ;level 7-4
 E_CastleArea5:
-      .byte $27, $a9, $4b, $0c, $68, $29, $0f, $06, $77, $1b
-      .byte $0f, $0b, $60, $15, $4b, $8c, $78, $2d, $90, $b5
+      .byte $27, $a9, MT_ENTRANCE_BOTTOM, $0c, $68, $29, $0f, $06, $77, $1b
+      .byte $0f, $0b, $60, $15, MT_ENTRANCE_BOTTOM, $8c, $78, $2d, $90, $b5
       .byte $ff
 
 ;level 8-4
@@ -1203,7 +1242,7 @@ E_GroundArea4:
 E_GroundArea5:
       .byte $9b, $8e, $ca, $0e, $ee, $42, $44, $5b, $86, $80, $b8
       .byte $1b, $80, $50, $ba, $10, $b7, $5b, $00, $17, $85
-      .byte $4b, $05, $fe, $34, $40, $b7, $86, $c6, $06, $5b, $80
+      .byte MT_ENTRANCE_BOTTOM, $05, $fe, $34, $40, $b7, $86, $c6, $06, $5b, $80
       .byte $83, $00, $d0, $38, $5b, $8e, $8a, $0e, $a6, $00
       .byte $bb, $0e, $c5, $80, $f3, $00
       .byte $ff
@@ -1211,7 +1250,7 @@ E_GroundArea5:
 ;level 1-1
 E_GroundArea6:
       .byte $1e, $c2, $00, $6b, $06, $8b, $86, $63, $b7, $0f, $05
-      .byte $03, $06, $23, $06, $4b, $b7, $bb, $00, $5b, $b7
+      .byte $03, $06, $23, $06, MT_ENTRANCE_BOTTOM, $b7, $bb, $00, $5b, $b7
       .byte $fb, $37, $3b, $b7, $0f, $0b, $1b, $37
       .byte $ff
 
@@ -1254,7 +1293,7 @@ E_GroundArea12:
 ;level 4-3
 E_GroundArea13:
       .byte $c7, $83, $d7, $03, $42, $8f, $7a, $03, $05, $a4
-      .byte $78, $24, $a6, $25, $e4, $25, $4b, $83, $e3, $03
+      .byte $78, $24, $a6, $25, $e4, $25, MT_ENTRANCE_BOTTOM, $83, $e3, $03
       .byte $05, $a4, $89, $24, $b5, $24, $09, $a4, $65, $24
       .byte $c9, $24, $0f, $08, $85, $25
       .byte $ff
@@ -1282,7 +1321,7 @@ E_GroundArea17:
       .byte $3b, $db, $80, $8b, $b8, $1b, $82, $fb, $b8, $7b
       .byte $80, $fb, $3c, $5b, $bc, $7b, $b8, $1b, $8e, $cb
       .byte $0e, $1b, $8e, $0f, $0d, $2b, $3b, $bb, $b8, $eb, $82
-      .byte $4b, $b8, $bb, $38, $3b, $b7, $bb, $02, $0f, $13
+      .byte MT_ENTRANCE_BOTTOM, $b8, $bb, $38, $3b, $b7, $bb, $02, $0f, $13
       .byte $1b, $00, $cb, $80, $6b, $bc
       .byte $ff
 
@@ -1306,7 +1345,7 @@ E_GroundArea19:
 ;level 7-1
 E_GroundArea20:
       .byte $ab, $ce, $de, $42, $c0, $cb, $ce, $5b, $8e, $1b, $ce
-      .byte $4b, $85, $67, $45, $0f, $07, $2b, $00, $7b, $85
+      .byte MT_ENTRANCE_BOTTOM, $85, $67, $45, $0f, $07, $2b, $00, $7b, $85
       .byte $97, $05, $0f, $0a, $92, $02
       .byte $ff
 
@@ -1317,7 +1356,7 @@ E_GroundArea21:
 
 ;level 3-2
 E_GroundArea22:
-      .byte $1b, $80, $bb, $38, $4b, $bc, $eb, $3b, $0f, $04
+      .byte $1b, $80, $bb, $38, MT_ENTRANCE_BOTTOM, $bc, $eb, $3b, $0f, $04
       .byte $2b, $00, $ab, $38, $eb, $00, $cb, $8e, $fb, $80
       .byte $ab, $b8, $6b, $80, $fb, $3c, $9b, $bb, $5b, $bc
       .byte $fb, $00, $6b, $b8, $fb, $38
@@ -1357,7 +1396,7 @@ E_WaterArea1:
 
 ;level 2-2/7-2
 E_WaterArea2:
-      .byte $0f, $01, $2e, $25, $2b, $2e, $25, $4b, $4e, $25, $cb, $6b, $07
+      .byte $0f, $01, $2e, $25, $2b, $2e, $25, MT_ENTRANCE_BOTTOM, $4e, $25, $cb, $6b, $07
       .byte $97, $47, $e9, $87, $47, $c7, $7a, $07, $d6, $c7
       .byte $78, $07, $38, $87, $ab, $47, $e3, $07, $9b, $87
       .byte $0f, $09, $68, $47, $db, $c7, $3b, $c7
@@ -1394,11 +1433,11 @@ L_CastleArea2:
       .byte $1e, $0e, $7e, $02, $94, $63, $b4, $63, $d4, $63
       .byte $f4, $63, $14, $e3, $2e, $0e, $5e, $02, $64, $35
       .byte $88, $72, $be, $0e, $0d, $04, $ae, $02, $ce, $08
-      .byte $cd, $4b, $fe, $02, $0d, $05, $68, $31, $7e, $0a
+      .byte $cd, MT_ENTRANCE_BOTTOM, $fe, $02, $0d, $05, $68, $31, $7e, $0a
       .byte $96, $31, $a9, $63, $a8, $33, $d5, $30, $ee, $02
       .byte $e6, $62, $f4, $61, $04, $b1, $08, $3f, $44, $33
       .byte $94, $63, $a4, $31, $e4, $31, $04, $bf, $08, $3f
-      .byte $04, $bf, $08, $3f, $cd, $4b, $03, $e4, $0e, $03
+      .byte $04, $bf, $08, $3f, $cd, MT_ENTRANCE_BOTTOM, $03, $e4, $0e, $03
       .byte $2e, $01, $7e, $06, $be, $02, $de, $06, $fe, $0a
       .byte $0d, $c4, $cd, $43, $ce, $09, $de, $0b, $dd, $42
       .byte $fe, $02, $5d, $c7
@@ -1443,13 +1482,13 @@ L_CastleArea5:
       .byte $05, $32, $06, $33, $07, $34, $fe, $0a, $ae, $86
       .byte $be, $07, $fe, $02, $0d, $02, $27, $32, $46, $61
       .byte $55, $62, $5e, $0e, $1e, $82, $68, $3c, $74, $3a
-      .byte $7d, $4b, $5e, $8e, $7d, $4b, $7e, $82, $84, $62
-      .byte $94, $61, $a4, $31, $bd, $4b, $ce, $06, $fe, $02
+      .byte $7d, MT_ENTRANCE_BOTTOM, $5e, $8e, $7d, MT_ENTRANCE_BOTTOM, $7e, $82, $84, $62
+      .byte $94, $61, $a4, $31, $bd, MT_ENTRANCE_BOTTOM, $ce, $06, $fe, $02
       .byte $0d, $06, $34, $31, $3e, $0a, $64, $32, $75, $0a
       .byte $7b, $61, $a4, $33, $ae, $02, $de, $0e, $3e, $82
-      .byte $64, $32, $78, $32, $b4, $36, $c8, $36, $dd, $4b
+      .byte $64, $32, $78, $32, $b4, $36, $c8, $36, $dd, MT_ENTRANCE_BOTTOM
       .byte $44, $b2, $58, $32, $94, $63, $a4, $3e, $ba, $30
-      .byte $c9, $61, $ce, $06, $dd, $4b, $ce, $86, $dd, $4b
+      .byte $c9, $61, $ce, $06, $dd, MT_ENTRANCE_BOTTOM, $ce, $86, $dd, MT_ENTRANCE_BOTTOM
       .byte $fe, $02, $2e, $86, $5e, $02, $7e, $06, $fe, $02
       .byte $1e, $86, $3e, $02, $5e, $06, $7e, $02, $9e, $06
       .byte $fe, $0a, $0d, $c4, $cd, $43, $ce, $09, $de, $0b
@@ -1460,10 +1499,10 @@ L_CastleArea5:
 L_CastleArea6:
       .byte $5b, $06
       .byte $05, $32, $06, $33, $07, $34, $5e, $0a, $ae, $02
-      .byte $0d, $01, $39, $73, $0d, $03, $39, $7b, $4d, $4b
+      .byte $0d, $01, $39, $73, $0d, $03, $39, $7b, $4d, MT_ENTRANCE_BOTTOM
       .byte $de, $06, $1e, $8a, $ae, $06, $c4, $33, $16, $fe
       .byte $a5, $77, $fe, $02, $fe, $82, $0d, $07, $39, $73
-      .byte $a8, $74, $ed, $4b, $49, $fb, $e8, $74, $fe, $0a
+      .byte $a8, $74, $ed, MT_ENTRANCE_BOTTOM, $49, $fb, $e8, $74, $fe, $0a
       .byte $2e, $82, $67, $02, $84, $7a, $87, $31, $0d, $0b
       .byte $fe, $02, $0d, $0c, $39, $73, $5e, $06, $c6, $76
       .byte $45, $ff, $be, $0a, $dd, $48, $fe, $06, $3d, $cb
@@ -1482,7 +1521,7 @@ L_GroundArea1:
       .byte $64, $40, $95, $12, $a4, $40, $d2, $12, $e1, $40
       .byte $13, $c0, $2c, $17, $2f, $12, $49, $13, $83, $40
       .byte $9f, $14, $a3, $40, $17, $92, $83, $13, $92, $41
-      .byte $b9, $14, $c5, $12, $c8, $40, $d4, $40, $4b, $92
+      .byte $b9, $14, $c5, $12, $c8, $40, $d4, $40, MT_ENTRANCE_BOTTOM, $92
       .byte $78, $1b, $9c, $94, $9f, $11, $df, $14, $fe, $11
       .byte $7d, $c1, $9e, $42, $cf, $20
       .byte $fd
@@ -1663,7 +1702,7 @@ L_GroundArea14:
       .byte $2f, $95, $50, $42, $51, $12, $58, $14, $a6, $12
       .byte $db, $12, $1b, $93, $46, $43, $7b, $12, $8d, $49
       .byte $b7, $14, $1b, $94, $49, $0b, $bb, $12, $fc, $13
-      .byte $ff, $12, $03, $c1, $2f, $15, $43, $12, $4b, $13
+      .byte $ff, $12, $03, $c1, $2f, $15, $43, $12, MT_ENTRANCE_BOTTOM, $13
       .byte $77, $13, $9d, $4a, $15, $c1, $a1, $41, $c3, $12
       .byte $fe, $01, $7d, $c1, $9e, $42, $cf, $20
       .byte $fd
@@ -1902,14 +1941,14 @@ TreeLedge:
           lda CurrentPageLoc
           ora CurrentColumnPos    ;are we at the start of the level?
           beq MidTreeL
-          lda #$16                ;render start of tree ledge
+          lda #MT_TREE_LEDGE_LEFT_EDGE ;render start of tree ledge
           jmp NoUnder
 MidTreeL: ldx R7 
-          lda #$17                ;render middle of tree ledge
+          lda #MT_TREE_LEDGE_MIDDLE ;render middle of tree ledge
           sta MetatileBuffer,x    ;note that this is also used if ledge position is
-          lda #$4c                ;at the start of level for continuous effect
+          lda #MT_GREEN_LEDGE_STUMP ;at the start of level for continuous effect
           jmp AllUnder            ;now render the part underneath
-EndTreeL: lda #$18                ;render end of tree ledge
+EndTreeL: lda #MT_TREE_LEDGE_RIGHT_EDGE ;render end of tree ledge
           jmp NoUnder
 
 MushroomLedge:
@@ -1919,22 +1958,22 @@ MushroomLedge:
           lda AreaObjectLength,x     ;divide length by 2 and store elsewhere
           lsr
           sta MushroomLedgeHalfLen,x
-          lda #$19                   ;render start of mushroom
+          lda #MT_MUSHROOM_LEFT_EDGE      ;render start of mushroom
           jmp NoUnder
-EndMushL: lda #$1b                   ;if at the end, render end of mushroom
+EndMushL: lda #MT_MUSHROOM_RIGHT_EDGE     ;if at the end, render end of mushroom
           ldy AreaObjectLength,x
           beq NoUnder
           lda MushroomLedgeHalfLen,x ;get divided length and store where length
           sta R6                     ;was stored originally
           ldx R7 
-          lda #$1a
+          lda #MT_MUSHROOM_MIDDLE
           sta MetatileBuffer,x       ;render middle of mushroom
           cpy R6                     ;are we smack dab in the center?
           bne CannonExit              ;if not, branch to leave
           inx
-          lda #$4f
+          lda #MT_MUSHROOM_STUMP_TOP
           sta MetatileBuffer,x       ;render stem top of mushroom underneath the middle
-          lda #$50
+          lda #MT_MUSHROOM_STUMP_BOTTOM
 AllUnder: inx
           ldy #$0f                   ;set $0f to render all way down
           jmp RenderUnderPart        ;now render the stem of mushroom
@@ -1947,17 +1986,17 @@ NoUnder:  ldx R7                     ;load row of ledge
 BulletBillCannon:
              jsr GetLrgObjAttrib      ;get row and length of bullet bill cannon
              ldx R7                   ;start at first row
-             lda #$64                 ;render bullet bill cannon
+             lda #MT_BULLET_BILL_CANNON_BARREL ;render bullet bill cannon
              sta MetatileBuffer,x
              inx
              dey                      ;done yet?
              bmi SetupCannon
-             lda #$65                 ;if not, render middle part
+             lda #MT_BULLET_BILL_CANNON_TOP     ;if not, render middle part
              sta MetatileBuffer,x
              inx
              dey                      ;done yet?
              bmi SetupCannon
-             lda #$66                 ;if not, render bottom until length expires
+             lda #MT_BULLET_BILL_CANNON_BOTTOM     ;if not, render bottom until length expires
              jsr RenderUnderPart
 SetupCannon: ldx Cannon_Offset        ;get offset for data used by cannons and whirlpools
              jsr GetAreaObjYPosition  ;get proper vertical coordinate for cannon
@@ -1977,17 +2016,33 @@ CannonExit:
 ;--------------------------------
 
 SolidBlockMetatiles:
-      .byte $69, $61, $61, $62
+;water
+      .byte MT_SOLID_BLOCK_WATER_LEVEL_GREEN_ROCK
+;ground
+      .byte MT_SOLID_BLOCK_3D_BLOCK
+;underground
+      .byte MT_SOLID_BLOCK_3D_BLOCK
+;castle
+      .byte MT_SOLID_BLOCK_WHITE_WALL
 
 BrickMetatiles:
-      .byte $22, $51, $52, $52
-      .byte $88 ;used only by row of bricks object
+;water
+      .byte MT_SEAPLANT
+;ground
+      .byte MT_BREAKABLE_BRICK_WITH_LINE
+;underground
+      .byte MT_BREAKABLE_BRICK
+;castle
+      .byte MT_BREAKABLE_BRICK
+
+BrickMetatileForRow = * - BrickMetatiles
+      .byte MT_CLOUD_LEVEL_TERRAIN
 
 RowOfBricks:
             ldy AreaType           ;load area type obtained from area offset pointer
             lda CloudTypeOverride  ;check for cloud type override
             beq DrawBricks
-            ldy #$04               ;if cloud type, override area type
+            ldy #BrickMetatileForRow ;if cloud type, override area type
 DrawBricks: lda BrickMetatiles,y   ;get appropriate metatile
             jmp GetRow             ;and go render it
 
@@ -2015,10 +2070,6 @@ GetRow2: pha                        ;save metatile to stack for now
          ldx R7                     ;get starting row
          jmp RenderUnderPart        ;now render the column
 
-
-;-----------------------------------
-
-
 ;--------------------------------
 ;$07 - used to save ID of brick object
 
@@ -2044,7 +2095,7 @@ BrickWithItem:
           ldy AreaType                ;check level type for ground level
           dey
           beq BWithL                  ;if ground type, do not start with 5
-          lda #$05                    ;otherwise use adder for bricks without lines
+          lda #NumOfUniqBricks        ;otherwise use adder for bricks without lines
 BWithL:   clc                         ;add object ID to adder
           adc R7 
           tay                         ;use as offset for metatile
@@ -2132,14 +2183,32 @@ VineBlock:
 ;--------------------------------
 
 BrickQBlockMetatiles:
-      .byte $c1, $c0, $5f, $60 ;used by question blocks
+;used by question blocks
+      .byte MT_QUESTION_BLOCK_POWER_UP
+      .byte MT_QUESTION_BLOCK_COIN
+      .byte MT_HIDDEN_BLOCK_1_COIN
+      .byte MT_HIDDEN_BLOCK_1_UP
 
-      ;these two sets are functionally identical, but look different
-      .byte $55, $56, $57, $58, $59 ;used by ground level types
-      .byte $5a, $5b, $5c, $5d, $5e ;used by other level types
+UniqBricks:
+;used by ground level types
+      .byte MT_BRICK_WITH_LINE_POWER_UP
+      .byte MT_BRICK_WITH_LINE_VINE
+      .byte MT_BRICK_WITH_LINE_STAR
+      .byte MT_BRICK_WITH_LINE_COINS
+      .byte MT_BRICK_WITH_LINE_1_UP
+      
+NumOfUniqBricks = * - UniqBricks
+;used by other level types
+      .byte MT_BRICK_POWER_UP
+      .byte MT_BRICK_VINE
+      .byte MT_BRICK_STAR
+      .byte MT_BRICK_COINS
+      .byte MT_BRICK_1_UP
+
+SizeOfBrickQBlockMetatiles = * - BrickQBlockMetatiles
 
 BlockBumpedChk:
-             ldy #$0d                    ;start at end of metatile data
+             ldy #SizeOfBrickQBlockMetatiles-1 ;start at end of metatile data
 BumpChkLoop: cmp BrickQBlockMetatiles,y  ;check to see if current metatile matches
              beq MatchBump               ;metatile found in block buffer, branch if so
              dey                         ;otherwise move onto next metatile
@@ -2175,7 +2244,7 @@ CheckTopOfBlock:
        sta R2                  ;store as new vertical high nybble offset
        tay 
        lda (R6),y             ;get contents of block buffer in same column, one row up
-       cmp #$c2                ;is it a coin? (not underwater)
+       cmp #MT_COIN                ;is it a coin? (not underwater)
        bne TopEx               ;if not, branch to leave
        lda #$00
        sta (R6),y             ;otherwise put blank metatile where coin was
@@ -2327,30 +2396,32 @@ Bridge_Low:
       jsr ChkLrgObjLength  ;get low nybble and save as length
       pla
       tax                  ;render bridge railing
-      lda #$0b
+      lda #MT_BRIDGE_GUARDRAIL
       sta MetatileBuffer,x
       inx
       ldy #$00             ;now render the bridge itself
-      lda #$63
+      lda #MT_BRIDGE
       jmp RenderUnderPart
-
-
 
 ;--------------------------------
 ;$06 - used to store upper limit of rows for CastleObject
 
+;these metatiles are in horizontally reversed order (top to bottom, right to left)
 CastleMetatiles:
-      .byte $00, $45, $45, $45, $00
-      .byte $00, $48, $47, $46, $00
-      .byte $45, $49, $49, $49, $45
-      .byte $47, $47, $4a, $47, $47
-      .byte $47, $47, $4b, $47, $47
-      .byte $49, $49, $49, $49, $49
-      .byte $47, $4a, $47, $4a, $47
-      .byte $47, $4b, $47, $4b, $47
-      .byte $47, $47, $47, $47, $47
-      .byte $4a, $47, $4a, $47, $4a
-      .byte $4b, $47, $4b, $47, $4b
+.byte MT_BLANK,                 MT_CASTLE_TOP,            MT_CASTLE_TOP,            MT_CASTLE_TOP,            MT_BLANK                  ; www
+.byte MT_BLANK,                 MT_CASTLE_WINDOW_RIGHT,   MT_CASTLE_BRICK_WALL,     MT_CASTLE_WINDOW_LEFT,    MT_BLANK                  ; [#]
+.byte MT_CASTLE_TOP,            MT_CASTLE_TOP_WITH_BRICK, MT_CASTLE_TOP_WITH_BRICK, MT_CASTLE_TOP_WITH_BRICK, MT_CASTLE_TOP             ;wWWWw
+.byte MT_CASTLE_BRICK_WALL,     MT_CASTLE_BRICK_WALL,     MT_ENTRANCE_TOP,          MT_CASTLE_BRICK_WALL,     MT_CASTLE_BRICK_WALL      ;##^##
+.byte MT_CASTLE_BRICK_WALL,     MT_CASTLE_BRICK_WALL,     MT_ENTRANCE_BOTTOM,       MT_CASTLE_BRICK_WALL,     MT_CASTLE_BRICK_WALL      ;##U##
+.byte MT_CASTLE_TOP_WITH_BRICK, MT_CASTLE_TOP_WITH_BRICK, MT_CASTLE_TOP_WITH_BRICK, MT_CASTLE_TOP_WITH_BRICK, MT_CASTLE_TOP_WITH_BRICK  ;WWWWW
+.byte MT_CASTLE_BRICK_WALL,     MT_ENTRANCE_TOP,          MT_CASTLE_BRICK_WALL,     MT_ENTRANCE_TOP,          MT_CASTLE_BRICK_WALL      ;#^#^#
+.byte MT_CASTLE_BRICK_WALL,     MT_ENTRANCE_BOTTOM,       MT_CASTLE_BRICK_WALL,     MT_ENTRANCE_BOTTOM,       MT_CASTLE_BRICK_WALL      ;#U#U#
+.byte MT_CASTLE_BRICK_WALL,     MT_CASTLE_BRICK_WALL,     MT_CASTLE_BRICK_WALL,     MT_CASTLE_BRICK_WALL,     MT_CASTLE_BRICK_WALL      ;#####
+.byte MT_ENTRANCE_TOP,          MT_CASTLE_BRICK_WALL,     MT_ENTRANCE_TOP,          MT_CASTLE_BRICK_WALL,     MT_ENTRANCE_TOP           ;^#^#^
+.byte MT_ENTRANCE_BOTTOM,       MT_CASTLE_BRICK_WALL,     MT_ENTRANCE_BOTTOM,       MT_CASTLE_BRICK_WALL,     MT_ENTRANCE_BOTTOM        ;U#U#U
+
+;mtile that is placed at the door (so that mario stops moving after clearing the level)
+ReplacedCastleMTile = MT_BREAKABLE_BRICK
 
 CastleObject:
             jsr GetLrgObjAttrib      ;save lower nybble as starting row
@@ -2404,7 +2475,7 @@ NotTall:    cmp #$02                 ;if not tall castle, check to see if we're 
             lda #StarFlagObject      ;set star flag value in buffer itself
             sta Enemy_ID,x
             rts
-PlayerStop: ldy #$52                 ;put brick at floor to stop player at end of level
+PlayerStop: ldy #ReplacedCastleMTile ;put brick at floor to stop player at end of level
             sty MetatileBuffer+10    ;this is only done if we're on the second column
 ExitCastle: rts
 
@@ -2414,7 +2485,7 @@ C_ObjectRow:
       .byte $06, $07, $08
 
 C_ObjectMetatile:
-      .byte $c5, $0c, $89
+      .byte MT_AXE, MT_CHAIN, MT_BOWSERS_BRIDGE
 
 CastleBridgeObj:
       ldy #$0c                  ;load length of 13 columns
@@ -2434,14 +2505,21 @@ ChainObj:
 EmptyBlock:
         jsr GetLrgObjAttrib  ;get row location
         ldx R7 
-        lda #$c4
+        lda #MT_EMPTY_BLOCK
 ColObj: ldy #$00             ;column length of 1
         jmp RenderUnderPart
 
 ;--------------------------------
 
 CoinMetatileData:
-      .byte $c3, $c2, $c2, $c2
+;water
+      .byte MT_UNDERWATER_COIN
+;ground
+      .byte MT_COIN
+;underground
+      .byte MT_COIN
+;castle
+      .byte MT_COIN
 
 RowOfCoins:
       ldy AreaType            ;get area type
@@ -2451,13 +2529,13 @@ RowOfCoins:
 ;--------------------------------
 
 FlagpoleObject:
-  lda #$24                 ;render flagpole ball on top
+  lda #MT_FLAGPOLE_BALL                 ;render flagpole ball on top
   sta MetatileBuffer
   ldx #$01                 ;now render the flagpole shaft
   ldy #$08
-  lda #$25
+  lda #MT_FLAGPOLE_SHAFT
   jsr RenderUnderPart
-  lda #$61                 ;render solid block at the bottom
+  lda #MT_SOLID_BLOCK_3D_BLOCK      ;render solid block at the bottom
   sta MetatileBuffer+10
   jsr GetAreaObjXPosition
   sec                      ;get pixel coordinate of where the flagpole is,
@@ -2481,17 +2559,24 @@ FlagpoleObject:
 
 Hole_Water:
       jsr ChkLrgObjLength   ;get low nybble and save as length
-      lda #$86              ;render waves
+      lda #MT_WATER_OR_LAVA_TOP              ;render waves
       sta MetatileBuffer+10
       ldx #$0b
       ldy #$01              ;now render the water underneath
-      lda #$87
+      lda #MT_WATER_OR_LAVA
       jmp RenderUnderPart
 
 ;--------------------------------
 
 HoleMetatiles:
-      .byte $87, $00, $00, $00
+;water
+      .byte MT_WATER_OR_LAVA
+;ground
+      .byte MT_BLANK
+;underground
+      .byte MT_BLANK
+;castle
+      .byte MT_BLANK
 
 Hole_Empty:
             jsr ChkLrgObjLength          ;get lower nybble and save as length
@@ -2530,18 +2615,30 @@ RenderUnderPart:
              sty AreaObjectHeight  ;store vertical length to render
              ldy MetatileBuffer,x  ;check current spot to see if there's something
              beq DrawThisRow       ;we need to keep, if nothing, go ahead
-             cpy #$17
+             cpy #MT_TREE_LEDGE_MIDDLE
              beq WaitOneRow        ;if middle part (tree ledge), wait until next row
-             cpy #$1a
+             cpy #MT_MUSHROOM_MIDDLE
              beq WaitOneRow        ;if middle part (mushroom ledge), wait until next row
-             cpy #$c0
+             cpy #MT_QUESTION_BLOCK_COIN
              beq DrawThisRow       ;if question block w/ coin, overwrite
-             cpy #$c0
-             bcs WaitOneRow        ;if any other metatile with palette 3, wait until next row
-             cpy #$54
+             
+             ;TODO: this needs to be optimized in the future
+             ;(originally the code checked for palette 3 metatiles here)
+             cpy #MT_QUESTION_BLOCK_POWER_UP
+             beq WaitOneRow
+             cpy #MT_COIN
+             beq WaitOneRow
+             cpy #MT_UNDERWATER_COIN
+             beq WaitOneRow
+             cpy #MT_EMPTY_BLOCK
+             beq WaitOneRow
+             cpy #MT_AXE
+             beq WaitOneRow
+
+             cpy #MT_CRACKED_ROCK_TERRAIN
              bne DrawThisRow       ;if cracked rock terrain, overwrite
-             cmp #$50
-             beq WaitOneRow        ;if stem top of mushroom, wait until next row
+             cmp #MT_MUSHROOM_STUMP_BOTTOM
+             beq WaitOneRow        ;if stem bottom of mushroom, wait until next row
 DrawThisRow: sta MetatileBuffer,x  ;render contents of A from routine that called this
 WaitOneRow:  inx
              cpx #$0d              ;stop rendering if we're at the bottom of the screen
@@ -2570,9 +2667,9 @@ Jumpspring:
       sty Enemy_Y_HighPos,x       ;store vertical high byte
       inc Enemy_Flag,x            ;set flag for enemy object buffer
       ldx R7 
-      lda #$67                    ;draw metatiles in two rows where jumpspring is
+      lda #MT_BLANK_USED_FOR_JUMPSPRING   ;draw metatiles in two rows where jumpspring is
       sta MetatileBuffer,x
-      lda #$68
+      lda #MT_HALF_BRICK_USED_FOR_JUMPSPRING
       sta MetatileBuffer+1,x
       rts
 
@@ -2582,9 +2679,9 @@ WaterPipe:
       jsr GetLrgObjAttrib     ;get row and lower nybble
       ; ldy AreaObjectLength,x  ;get length (residual code, water pipe is 1 col thick)
       ldx R7                  ;get row
-      lda #$6b
+      lda #MT_WATER_PIPE_TOP
       sta MetatileBuffer,x    ;draw something here and below it
-      lda #$6c
+      lda #MT_WATER_PIPE_BOTTOM
       sta MetatileBuffer+1,x
       rts
 
@@ -2600,7 +2697,7 @@ IntroPipe:
                jsr RenderSidewaysPipe
                bcs NoBlankP             ;if carry flag set, not time to draw vertical pipe part
                ldx #$06                 ;blank everything above the vertical pipe part
-VPipeSectLoop: lda #$00                 ;all the way to the top of the screen
+VPipeSectLoop: lda #MT_BLANK            ;all the way to the top of the screen
                sta MetatileBuffer,x     ;because otherwise it will look like exit pipe
                dex
                bpl VPipeSectLoop
@@ -2609,14 +2706,14 @@ VPipeSectLoop: lda #$00                 ;all the way to the top of the screen
 NoBlankP:      rts
 
 SidePipeShaftData:
-      .byte $15, $14  ;used to control whether or not vertical pipe shaft
-      .byte $00, $00  ;is drawn, and if so, controls the metatile number
+      .byte MT_PIPE_SHAFT_RIGHT, MT_PIPE_SHAFT_LEFT  ;used to control whether or not vertical pipe shaft
+      .byte MT_BLANK, MT_BLANK  ;is drawn, and if so, controls the metatile number
 SidePipeTopPart:
-      .byte $15, $1e  ;top part of sideways part of pipe
-      .byte $1d, $1c
+      .byte MT_PIPE_SHAFT_RIGHT, MT_SIDEWAYS_PIPE_JOINT_TOP  ;top part of sideways part of pipe
+      .byte MT_SIDEWAYS_PIPE_SHAFT_TOP, MT_SIDEWAYS_PIPE_END_TOP
 SidePipeBottomPart: 
-      .byte $15, $21  ;bottom part of sideways part of pipe
-      .byte $20, $1f
+      .byte MT_PIPE_SHAFT_RIGHT, MT_SIDEWAYS_PIPE_JOINT_BOTTOM  ;bottom part of sideways part of pipe
+      .byte MT_SIDEWAYS_PIPE_SHAFT_BOTTOM, MT_SIDEWAYS_PIPE_END_BOTTOM
 
 ExitPipe:
       ldy #$03                 ;check if length set, if not set, set it
@@ -2632,7 +2729,7 @@ RenderSidewaysPipe:
               ldx R5                    ;get vertical length plus one, use as buffer offset
               inx
               lda SidePipeShaftData,y   ;check for value $00 based on horizontal offset
-              cmp #$00
+              cmp #MT_BLANK
               beq DrawSidePart          ;if found, do not draw the vertical pipe shaft
               ldx #$00
               ldy R5                    ;init buffer offset and get vertical length
@@ -2646,10 +2743,10 @@ DrawSidePart: ldy R6                    ;render side pipe part at the bottom
               rts
 
 VerticalPipeData:
-      .byte $11, $10 ;used by pipes that lead somewhere
-      .byte $15, $14
-      .byte $13, $12 ;used by decoration pipes
-      .byte $15, $14
+      .byte MT_WARP_PIPE_END_RIGHT_AND_POINTS_UP, MT_WARP_PIPE_END_LEFT_AND_POINTS_UP ;used by pipes that lead somewhere
+      .byte MT_PIPE_SHAFT_RIGHT, MT_PIPE_SHAFT_LEFT
+      .byte MT_DECORATION_PIPE_END_RIGHT_AND_POINTS_UP, MT_DECORATION_PIPE_END_LEFT_AND_POINTS_UP ;used by decoration pipes
+      .byte MT_PIPE_SHAFT_RIGHT, MT_PIPE_SHAFT_LEFT
 
 VerticalPipe:
           jsr GetPipeHeight
@@ -2718,7 +2815,7 @@ ExitEmptyChk: rts               ;if all values nonzero, carry flag is set
 
 ;tiles used by pulleys and rope object
 PulleyRopeMetatiles:
-      .byte $42, $41, $43
+      .byte MT_LEFT_PULLEY, MT_HORIZONTAL_ROPE, MT_RIGHT_PULLEY
 
 PulleyRopeObject:
            jsr ChkLrgObjLength       ;get length of pulley/rope object
@@ -2745,7 +2842,7 @@ QuestionBlockRow_Low:
       jsr ChkLrgObjLength  ;get low nybble and save as length
       pla
       tax                  ;render question boxes with coins
-      lda #$c0
+      lda #MT_QUESTION_BLOCK_COIN
       sta MetatileBuffer,x
       rts
 
@@ -2761,13 +2858,13 @@ BalancePlatRope:
           pha
           ldx #$01            ;blank out all from second row to the bottom
           ldy #$0f            ;with blank used for balance platform rope
-          lda #$44
+          lda #MT_BLANK_USED_FOR_BALANCE_ROPE
           jsr RenderUnderPart
           pla                 ;get back object buffer offset
           tax
           jsr GetLrgObjAttrib ;get vertical length from lower nybble
           ldx #$01
-DrawRope: lda #$40            ;render the actual rope
+DrawRope: lda #MT_VERTICAL_ROPE     ;render the actual rope
           jmp RenderUnderPart
 
 
@@ -2789,6 +2886,6 @@ NextStair: dec StaircaseControl      ;move onto next step (or first if starting)
            ldx StaircaseRowData,y    ;get starting row and height to render
            lda StaircaseHeightData,y
            tay
-           lda #$61                  ;now render solid block staircase
+           lda #MT_SOLID_BLOCK_3D_BLOCK                  ;now render solid block staircase
            jmp RenderUnderPart
 

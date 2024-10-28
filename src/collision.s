@@ -226,15 +226,15 @@ InitFireballExplode:
       rts                         ;leave
 
 ChkForNonSolids:
-       cmp #$26       ;blank metatile used for vines?
+       cmp #MT_BLANK_USED_IN_CONJUNCTION_WITH_VINES
        beq NSFnd
-       cmp #$c2       ;regular coin?
+       cmp #MT_COIN
        beq NSFnd
-       cmp #$c3       ;underwater coin?
+       cmp #MT_UNDERWATER_COIN
        beq NSFnd
-       cmp #$5f       ;hidden coin block?
+       cmp #MT_HIDDEN_BLOCK_1_COIN
        beq NSFnd
-       cmp #$60       ;hidden 1-up block?
+       cmp #MT_HIDDEN_BLOCK_1_UP
 NSFnd: rts
 
 ;--------------------------------
@@ -1034,7 +1034,7 @@ HeadChk:
           jmp DoFootCheck             ;jump ahead to skip these other parts
 
 SolidOrClimb:
-  cmp #$26               ;if climbing metatile,
+  cmp #MT_BLANK_USED_IN_CONJUNCTION_WITH_VINES ;if climbing metatile,
   beq NYSpd              ;branch ahead and do not play sound
     lda #Sfx_Bump
     sta Square1SoundQueue  ;otherwise load bump sound
@@ -1069,12 +1069,12 @@ ChkFootMTile:
   bcs DoPlayerSideCheck      ;if so, branch
     ldy Player_Y_Speed         ;check player's vertical speed
     bmi DoPlayerSideCheck      ;if player moving upwards, branch
-    cmp #$c5
+    cmp #MT_AXE
     bne ContChk                ;if player did not touch axe, skip ahead
       jmp HandleAxeMetatile      ;otherwise jump to set modes of operation
 ContChk:
   jsr ChkInvisibleMTiles     ;do sub to check for hidden coin or 1-up blocks
-  beq DoPlayerSideCheck      ;if either found, branch
+  bcs DoPlayerSideCheck      ;if either found, branch
     ldy JumpspringAnimCtrl     ;if jumpspring animating right now,
     bne InitSteP               ;branch ahead
       ldy R4                     ;check lower nybble of vertical coordinate returned
@@ -1114,9 +1114,9 @@ SideCheckLoop:
   bcs ExSCH                 ;branch to leave if player is too far down
   jsr BlockBufferColli_Side ;do player-to-bg collision detection on one half of player
   beq BHalf                 ;branch ahead if nothing found
-  cmp #$1c                  ;otherwise check for pipe metatiles
+  cmp #MT_SIDEWAYS_PIPE_END_TOP
   beq BHalf                 ;if collided with sideways pipe (top), branch ahead
-  cmp #$6b
+  cmp #MT_WATER_PIPE_TOP
   beq BHalf                 ;if collided with water pipe (top), branch ahead
     jsr CheckForClimbMTiles   ;do sub to see if player bumped into anything climbable
     bcc CheckSideMTiles       ;if not, branch to alternate section of code
@@ -1137,7 +1137,7 @@ ExSCH:
 
 CheckSideMTiles:
   jsr ChkInvisibleMTiles     ;check for hidden or coin 1-up blocks
-  beq ExSCH                  ;branch to leave if either found
+  bcs ExSCH                  ;branch to leave if either found
     jsr CheckForClimbMTiles    ;check for climbable metatiles
     bcc ContSChk               ;if not found, skip and continue with code
       jmp HandleClimbing         ;otherwise jump to handle climbing
@@ -1156,9 +1156,9 @@ ChkPBtm:
     ldy PlayerFacingDir        ;get player's facing direction
     dey
     bne StopPlayerMove         ;if facing left, branch to impede movement
-    cmp #$6c                   ;otherwise check for pipe metatiles
-    beq PipeDwnS               ;if collided with sideways pipe (bottom), branch
-    cmp #$1f                   ;if collided with water pipe (bottom), continue
+    cmp #MT_WATER_PIPE_BOTTOM  ;otherwise check for pipe metatiles
+    beq PipeDwnS               ;if collided with water pipe (bottom), branch
+    cmp #MT_SIDEWAYS_PIPE_END_BOTTOM ;if collided with sideways pipe (bottom), continue
     bne StopPlayerMove         ;otherwise branch to impede player's movement
 PipeDwnS:
   lda Player_SprAttrib       ;check player's attributes
@@ -1325,9 +1325,9 @@ CheckForClimbMTiles:
   rts
 
 CheckForCoinMTiles:
-  cmp #$c2              ;check for regular coin
+  cmp #MT_COIN          ;check for regular coin
   beq CoinSd            ;branch if found
-  cmp #$c3              ;check for underwater coin
+  cmp #MT_UNDERWATER_COIN ;check for underwater coin
   beq CoinSd            ;branch if found
   clc                   ;otherwise clear carry and leave
   rts
@@ -1384,9 +1384,9 @@ NoEToBGCollision:
 
 HandleEToBGCollision:
       jsr ChkForNonSolids       ;if something is underneath enemy, find out what
-      beq NoEToBGCollision      ;if blank $26, coins, or hidden blocks, jump, enemy falls through
-      cmp #$23
-      bne LandEnemyProperly     ;check for blank metatile $23 and branch if not found
+      beq NoEToBGCollision      ;if blank, coins, or hidden blocks, jump, enemy falls through
+      cmp #MT_BLANK_USED_ON_BRICKS_OR_BLOCKS_THAT_ARE_HIT
+      bne LandEnemyProperly     ;check for blank metatile and branch if not found
       ldy R2                    ;get vertical coordinate used to find block
       lda #$00                  ;store default blank metatile in that spot so we won't
       sta (R6) ,y               ;trigger this routine accidentally again
@@ -1647,9 +1647,9 @@ HandleClimbing:
 ExHC: rts                ;leave if too far left or too far right
 
 ChkForFlagpole:
-      cmp #$24               ;check climbing metatiles
+      cmp #MT_FLAGPOLE_BALL  ;check flagpole metatiles
       beq FlagpoleCollision  ;branch if flagpole ball found
-      cmp #$25
+      cmp #MT_FLAGPOLE_SHAFT
       bne VineCollision      ;branch to alternate code if flagpole shaft not found
 
 FlagpoleCollision:
@@ -1683,7 +1683,7 @@ RunFR: lda #$04
        jmp PutPlayerOnVine       ;jump to end of climbing code
 
 VineCollision:
-      cmp #$26                  ;check for climbing metatile used on vines
+      cmp #MT_BLANK_USED_IN_CONJUNCTION_WITH_VINES ;check for climbing metatile used on vines
       bne PutPlayerOnVine
       lda Player_Y_Position     ;check player's vertical coordinate
       cmp #$20                  ;for being in status bar area
@@ -1724,10 +1724,12 @@ ExPVne:  rts                     ;finally, we're done!
 ;--------------------------------
 
 ChkInvisibleMTiles:
-         cmp #$5f       ;check for hidden coin block
-         beq ExCInvT    ;branch to leave if found
-         cmp #$60       ;check for hidden 1-up block
-ExCInvT: rts            ;leave with zero flag set if either found
+  tay
+  lda Metatile_Attributes,y
+  and #8
+  cmp #8
+  tya
+  rts                       ;carry set = fallthrough
 
 ;--------------------------------
 ;$00-$01 - used to hold bottom right and bottom left metatiles (in that order)
@@ -1747,9 +1749,9 @@ ChkForLandJumpSpring:
 ExCJSp: rts                         ;and leave
 
 ChkJumpspringMetatiles:
-         cmp #$67      ;check for top jumpspring metatile
+         cmp #MT_BLANK_USED_FOR_JUMPSPRING      ;check for top jumpspring metatile
          beq JSFnd     ;branch to set carry if found
-         cmp #$68      ;check for bottom jumpspring metatile
+         cmp #MT_HALF_BRICK_USED_FOR_JUMPSPRING      ;check for bottom jumpspring metatile
          clc           ;clear carry flag
          bne NoJSFnd   ;branch to use cleared carry if not found
 JSFnd:   sec           ;set carry if found
@@ -1792,11 +1794,11 @@ PlayerHeadCollision:
     bcc PutMTileB            ;if no match was found in previous sub, skip ahead
       ldy #$11                 ;otherwise load unbreakable state into block object buffer
       sty Block_State,x        ;note this applies to both player sizes
-      lda #$c4                 ;load empty block metatile into A for now
+      lda #MT_EMPTY_BLOCK      ;load empty block metatile into A for now
       ldy R0                   ;get metatile from before
-      cpy #$58                 ;is it brick with coins (with line)?
+      cpy #MT_BRICK_WITH_LINE_COINS ;is it brick with coins (with line)?
       beq StartBTmr            ;if so, branch
-        cpy #$5d                 ;is it brick with coins (without line)?
+        cpy #MT_BRICK_COINS                 ;is it brick with coins (without line)?
         bne PutMTileB            ;if not, branch ahead to store empty block metatile
 StartBTmr: 
       lda BrickCoinTimerFlag   ;check brick coin timer flag
@@ -1807,15 +1809,15 @@ StartBTmr:
 :  
       lda BrickCoinTimer       ;check brick coin timer
       bne :+             ;if not yet expired, branch to use current metatile
-        ldy #$c4                 ;otherwise use empty block metatile
+        ldy #MT_EMPTY_BLOCK    ;otherwise use empty block metatile
 :  
       tya                      ;put metatile into A
 PutMTileB:
     sta Block_Metatile,x     ;store whatever metatile be appropriate here
     jsr InitBlock_XY_Pos     ;get block object horizontal coordinates saved
     ldy R2                   ;get vertical high nybble offset
-    lda #$23
-    sta (R6),y               ;write blank metatile $23 to block buffer
+    lda #MT_BLANK_USED_ON_BRICKS_OR_BLOCKS_THAT_ARE_HIT
+    sta (R6),y               ;write blank metatile to block buffer
     lda #$10
     sta BlockBounceTimer     ;set block bounce timer
   pla                      ;pull original metatile from stack

@@ -10,6 +10,7 @@ BlockGfxData:
 interactable = 1 ;mtile is interactable
 hard = 2 ;mtile is completely hard from below (e.g. 3d solid block) 
 climbable = 4 ;mtile is climbable (e.g. residual ball block)
+fallthrough = 8 ;no foot detection on these metatiles
 
 pal0 = 0 << 6
 pal1 = 1 << 6
@@ -235,10 +236,10 @@ DefineMTile "MT_BRICK_1_UP", \
   pal1 + interactable
 DefineMTile "MT_HIDDEN_BLOCK_1_COIN", \
   $24, $24, $24, $24, \
-  pal1 + interactable
+  pal1 + interactable + fallthrough
 DefineMTile "MT_HIDDEN_BLOCK_1_UP", \
   $24, $24, $24, $24, \
-  pal1 + interactable
+  pal1 + interactable + fallthrough
 DefineMTile "MT_SOLID_BLOCK_3D_BLOCK", \
   $80, $90, $81, $91, \
   pal1 + interactable + hard
