@@ -514,7 +514,7 @@ ChkRow13: cmp #$0d                   ;row 13?
           beq LeavePar               ;if d6 clear, branch to leave (we handled this earlier)
           lda (AreaData),y           ;otherwise, get byte again
           and #%01111111             ;mask out d7
-          cmp #MT_ENTRANCE_BOTTOM                   ;check for loop command in low nybble
+          cmp #$4b                   ;check for loop command in low nybble
           bne Mask2MSB               ;(plus d6 set for object other than page control)
           inc LoopCommand            ;if loop command, set loop command flag
 Mask2MSB: and #%00111111             ;mask out d7 and d6
@@ -1178,7 +1178,7 @@ E_CastleArea2:
 
 ;level 2-4/5-4
 E_CastleArea3:
-      .byte $0b, $8c, MT_ENTRANCE_BOTTOM, $4c, $77, $5f, $eb, $0c, $bd, $db
+      .byte $0b, $8c, $4b, $4c, $77, $5f, $eb, $0c, $bd, $db
       .byte $19, $9d, $75, $1d, $7d, $5b, $d9, $1d, $3d, $dd
       .byte $99, $1d, $26, $9d, $5a, $2b, $8a, $2c, $ca, $1b
       .byte $20, $95, $7b, $5c, $db, $4c, $1b, $cc, $3b, $cc
@@ -1196,8 +1196,8 @@ E_CastleArea4:
 
 ;level 7-4
 E_CastleArea5:
-      .byte $27, $a9, MT_ENTRANCE_BOTTOM, $0c, $68, $29, $0f, $06, $77, $1b
-      .byte $0f, $0b, $60, $15, MT_ENTRANCE_BOTTOM, $8c, $78, $2d, $90, $b5
+      .byte $27, $a9, $4b, $0c, $68, $29, $0f, $06, $77, $1b
+      .byte $0f, $0b, $60, $15, $4b, $8c, $78, $2d, $90, $b5
       .byte $ff
 
 ;level 8-4
@@ -1242,7 +1242,7 @@ E_GroundArea4:
 E_GroundArea5:
       .byte $9b, $8e, $ca, $0e, $ee, $42, $44, $5b, $86, $80, $b8
       .byte $1b, $80, $50, $ba, $10, $b7, $5b, $00, $17, $85
-      .byte MT_ENTRANCE_BOTTOM, $05, $fe, $34, $40, $b7, $86, $c6, $06, $5b, $80
+      .byte $4b, $05, $fe, $34, $40, $b7, $86, $c6, $06, $5b, $80
       .byte $83, $00, $d0, $38, $5b, $8e, $8a, $0e, $a6, $00
       .byte $bb, $0e, $c5, $80, $f3, $00
       .byte $ff
@@ -1250,7 +1250,7 @@ E_GroundArea5:
 ;level 1-1
 E_GroundArea6:
       .byte $1e, $c2, $00, $6b, $06, $8b, $86, $63, $b7, $0f, $05
-      .byte $03, $06, $23, $06, MT_ENTRANCE_BOTTOM, $b7, $bb, $00, $5b, $b7
+      .byte $03, $06, $23, $06, $4b, $b7, $bb, $00, $5b, $b7
       .byte $fb, $37, $3b, $b7, $0f, $0b, $1b, $37
       .byte $ff
 
@@ -1293,7 +1293,7 @@ E_GroundArea12:
 ;level 4-3
 E_GroundArea13:
       .byte $c7, $83, $d7, $03, $42, $8f, $7a, $03, $05, $a4
-      .byte $78, $24, $a6, $25, $e4, $25, MT_ENTRANCE_BOTTOM, $83, $e3, $03
+      .byte $78, $24, $a6, $25, $e4, $25, $4b, $83, $e3, $03
       .byte $05, $a4, $89, $24, $b5, $24, $09, $a4, $65, $24
       .byte $c9, $24, $0f, $08, $85, $25
       .byte $ff
@@ -1321,7 +1321,7 @@ E_GroundArea17:
       .byte $3b, $db, $80, $8b, $b8, $1b, $82, $fb, $b8, $7b
       .byte $80, $fb, $3c, $5b, $bc, $7b, $b8, $1b, $8e, $cb
       .byte $0e, $1b, $8e, $0f, $0d, $2b, $3b, $bb, $b8, $eb, $82
-      .byte MT_ENTRANCE_BOTTOM, $b8, $bb, $38, $3b, $b7, $bb, $02, $0f, $13
+      .byte $4b, $b8, $bb, $38, $3b, $b7, $bb, $02, $0f, $13
       .byte $1b, $00, $cb, $80, $6b, $bc
       .byte $ff
 
@@ -1345,7 +1345,7 @@ E_GroundArea19:
 ;level 7-1
 E_GroundArea20:
       .byte $ab, $ce, $de, $42, $c0, $cb, $ce, $5b, $8e, $1b, $ce
-      .byte MT_ENTRANCE_BOTTOM, $85, $67, $45, $0f, $07, $2b, $00, $7b, $85
+      .byte $4b, $85, $67, $45, $0f, $07, $2b, $00, $7b, $85
       .byte $97, $05, $0f, $0a, $92, $02
       .byte $ff
 
@@ -1356,7 +1356,7 @@ E_GroundArea21:
 
 ;level 3-2
 E_GroundArea22:
-      .byte $1b, $80, $bb, $38, MT_ENTRANCE_BOTTOM, $bc, $eb, $3b, $0f, $04
+      .byte $1b, $80, $bb, $38, $4b, $bc, $eb, $3b, $0f, $04
       .byte $2b, $00, $ab, $38, $eb, $00, $cb, $8e, $fb, $80
       .byte $ab, $b8, $6b, $80, $fb, $3c, $9b, $bb, $5b, $bc
       .byte $fb, $00, $6b, $b8, $fb, $38
@@ -1396,7 +1396,7 @@ E_WaterArea1:
 
 ;level 2-2/7-2
 E_WaterArea2:
-      .byte $0f, $01, $2e, $25, $2b, $2e, $25, MT_ENTRANCE_BOTTOM, $4e, $25, $cb, $6b, $07
+      .byte $0f, $01, $2e, $25, $2b, $2e, $25, $4b, $4e, $25, $cb, $6b, $07
       .byte $97, $47, $e9, $87, $47, $c7, $7a, $07, $d6, $c7
       .byte $78, $07, $38, $87, $ab, $47, $e3, $07, $9b, $87
       .byte $0f, $09, $68, $47, $db, $c7, $3b, $c7
@@ -1433,11 +1433,11 @@ L_CastleArea2:
       .byte $1e, $0e, $7e, $02, $94, $63, $b4, $63, $d4, $63
       .byte $f4, $63, $14, $e3, $2e, $0e, $5e, $02, $64, $35
       .byte $88, $72, $be, $0e, $0d, $04, $ae, $02, $ce, $08
-      .byte $cd, MT_ENTRANCE_BOTTOM, $fe, $02, $0d, $05, $68, $31, $7e, $0a
+      .byte $cd, $4b, $fe, $02, $0d, $05, $68, $31, $7e, $0a
       .byte $96, $31, $a9, $63, $a8, $33, $d5, $30, $ee, $02
       .byte $e6, $62, $f4, $61, $04, $b1, $08, $3f, $44, $33
       .byte $94, $63, $a4, $31, $e4, $31, $04, $bf, $08, $3f
-      .byte $04, $bf, $08, $3f, $cd, MT_ENTRANCE_BOTTOM, $03, $e4, $0e, $03
+      .byte $04, $bf, $08, $3f, $cd, $4b, $03, $e4, $0e, $03
       .byte $2e, $01, $7e, $06, $be, $02, $de, $06, $fe, $0a
       .byte $0d, $c4, $cd, $43, $ce, $09, $de, $0b, $dd, $42
       .byte $fe, $02, $5d, $c7
@@ -1482,13 +1482,13 @@ L_CastleArea5:
       .byte $05, $32, $06, $33, $07, $34, $fe, $0a, $ae, $86
       .byte $be, $07, $fe, $02, $0d, $02, $27, $32, $46, $61
       .byte $55, $62, $5e, $0e, $1e, $82, $68, $3c, $74, $3a
-      .byte $7d, MT_ENTRANCE_BOTTOM, $5e, $8e, $7d, MT_ENTRANCE_BOTTOM, $7e, $82, $84, $62
-      .byte $94, $61, $a4, $31, $bd, MT_ENTRANCE_BOTTOM, $ce, $06, $fe, $02
+      .byte $7d, $4b, $5e, $8e, $7d, $4b, $7e, $82, $84, $62
+      .byte $94, $61, $a4, $31, $bd, $4b, $ce, $06, $fe, $02
       .byte $0d, $06, $34, $31, $3e, $0a, $64, $32, $75, $0a
       .byte $7b, $61, $a4, $33, $ae, $02, $de, $0e, $3e, $82
-      .byte $64, $32, $78, $32, $b4, $36, $c8, $36, $dd, MT_ENTRANCE_BOTTOM
+      .byte $64, $32, $78, $32, $b4, $36, $c8, $36, $dd, $4b
       .byte $44, $b2, $58, $32, $94, $63, $a4, $3e, $ba, $30
-      .byte $c9, $61, $ce, $06, $dd, MT_ENTRANCE_BOTTOM, $ce, $86, $dd, MT_ENTRANCE_BOTTOM
+      .byte $c9, $61, $ce, $06, $dd, $4b, $ce, $86, $dd, $4b
       .byte $fe, $02, $2e, $86, $5e, $02, $7e, $06, $fe, $02
       .byte $1e, $86, $3e, $02, $5e, $06, $7e, $02, $9e, $06
       .byte $fe, $0a, $0d, $c4, $cd, $43, $ce, $09, $de, $0b
@@ -1499,10 +1499,10 @@ L_CastleArea5:
 L_CastleArea6:
       .byte $5b, $06
       .byte $05, $32, $06, $33, $07, $34, $5e, $0a, $ae, $02
-      .byte $0d, $01, $39, $73, $0d, $03, $39, $7b, $4d, MT_ENTRANCE_BOTTOM
+      .byte $0d, $01, $39, $73, $0d, $03, $39, $7b, $4d, $4b
       .byte $de, $06, $1e, $8a, $ae, $06, $c4, $33, $16, $fe
       .byte $a5, $77, $fe, $02, $fe, $82, $0d, $07, $39, $73
-      .byte $a8, $74, $ed, MT_ENTRANCE_BOTTOM, $49, $fb, $e8, $74, $fe, $0a
+      .byte $a8, $74, $ed, $4b, $49, $fb, $e8, $74, $fe, $0a
       .byte $2e, $82, $67, $02, $84, $7a, $87, $31, $0d, $0b
       .byte $fe, $02, $0d, $0c, $39, $73, $5e, $06, $c6, $76
       .byte $45, $ff, $be, $0a, $dd, $48, $fe, $06, $3d, $cb
@@ -1521,7 +1521,7 @@ L_GroundArea1:
       .byte $64, $40, $95, $12, $a4, $40, $d2, $12, $e1, $40
       .byte $13, $c0, $2c, $17, $2f, $12, $49, $13, $83, $40
       .byte $9f, $14, $a3, $40, $17, $92, $83, $13, $92, $41
-      .byte $b9, $14, $c5, $12, $c8, $40, $d4, $40, MT_ENTRANCE_BOTTOM, $92
+      .byte $b9, $14, $c5, $12, $c8, $40, $d4, $40, $4b, $92
       .byte $78, $1b, $9c, $94, $9f, $11, $df, $14, $fe, $11
       .byte $7d, $c1, $9e, $42, $cf, $20
       .byte $fd
@@ -1702,7 +1702,7 @@ L_GroundArea14:
       .byte $2f, $95, $50, $42, $51, $12, $58, $14, $a6, $12
       .byte $db, $12, $1b, $93, $46, $43, $7b, $12, $8d, $49
       .byte $b7, $14, $1b, $94, $49, $0b, $bb, $12, $fc, $13
-      .byte $ff, $12, $03, $c1, $2f, $15, $43, $12, MT_ENTRANCE_BOTTOM, $13
+      .byte $ff, $12, $03, $c1, $2f, $15, $43, $12, $4b, $13
       .byte $77, $13, $9d, $4a, $15, $c1, $a1, $41, $c3, $12
       .byte $fe, $01, $7d, $c1, $9e, $42, $cf, $20
       .byte $fd
