@@ -9,3 +9,4 @@ __pycache__/
 generated.cfg
 src/tiled_levels/generated/*.hfm
 src/tiled_levels/generated/segments.inc
+*.tiled-session

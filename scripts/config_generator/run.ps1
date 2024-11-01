@@ -4,26 +4,37 @@ $levelsInputFolder = "src\tiled_levels"
 $levelsOutputFolder = "src\tiled_levels\generated"
 $outputFile = "generated.cfg"
 
-# Function to convert a CSV string into a byte array
+# Function to convert a hashtable of CSV strings into a hashtable of byte arrays
 function Convert-CSVToByteArray {
     param (
-        [string]$csvData
+        [hashtable]$tileLayerData
     )
 
-    # Split the CSV string into individual values
-    $tileData = $csvData -split ','
-    
-    # Convert each tile value to a byte
-    $byteArray = @()
-    foreach ($tile in $tileData) {
-        [byte]$byte = [convert]::ToByte($tile)
-        $byteArray += $byte
+    # Initialize a hashtable to store byte arrays for each layer
+    $byteArrayData = @{}
+
+    # Process each layer's CSV data in the hashtable
+    foreach ($layerName in $tileLayerData.Keys) {
+        $csvData = $tileLayerData[$layerName]
+
+        # Split the CSV string into individual values
+        $tileData = $csvData -split ','
+
+        # Convert each tile value to a byte and store in an array
+        $byteArray = @()
+        foreach ($tile in $tileData) {
+            [byte]$byte = [convert]::ToByte($tile)
+            $byteArray += $byte
+        }
+
+        # Add the byte array to the output hashtable, keyed by layer name
+        $byteArrayData[$layerName] = $byteArray
     }
 
-    return $byteArray
+    return $byteArrayData
 }
 
-# Function to parse the TMX file and extract the tile layer data
+# Function to parse the TMX file and extract tile layer data for background and foreground
 function ExtractTileLayerData {
     param (
         [string]$tmxFilePath
@@ -32,13 +43,52 @@ function ExtractTileLayerData {
     # Load the XML content of the TMX file
     $xmlContent = [xml](Get-Content -Path $tmxFilePath)
 
-    # Find the <data> element under the tile layer
-    $tileLayerData = $xmlContent.map.layer.data
+    # Initialize a hashtable to store data for each layer
+    $tileLayerData = @{}
 
-    # Extract the CSV data
-    $csvData = $tileLayerData.InnerText.Trim()
+    # Loop through each layer and check for background and foreground names
+    foreach ($layer in $xmlContent.map.layer) {
+        $layerName = $layer.name
+        if ($layerName -eq "background" -or $layerName -eq "foreground") {
+            # Extract the CSV data for the layer
+            $csvData = $layer.data.InnerText.Trim()
+            # Store it in the hashtable with the layer name as the key
+            $tileLayerData[$layerName] = $csvData
+        }
+    }
 
-    return $csvData
+    return $tileLayerData
+}
+
+# Function to compress each layer's byte array and save to separate files
+function CompressTileLayerData {
+    param (
+        [string]$levelName,            # Base name for the output files
+        [string]$levelsOutputFolder,   # Output folder path
+        [hashtable]$byteArrayData      # Hashtable containing byte arrays for each layer
+    )
+
+    # Iterate through each layer in the byteArrayData hashtable
+    foreach ($layerName in $byteArrayData.Keys) {
+        # Determine the file suffix based on the layer name
+        $suffix = if ($layerName -eq "background") { "_bg" } else { "_fg" }
+        $outputFileName = "${levelName}${suffix}.hfm"
+
+        # Generate a temporary binary file path for the layer data
+        $tempFilePath = [System.IO.Path]::Combine($levelsOutputFolder, "${levelName}${suffix}.temp")
+
+        # Write the byte array for the current layer to the temporary binary file
+        [System.IO.File]::WriteAllBytes($tempFilePath, $byteArrayData[$layerName])
+
+        # Generate the compressed file path
+        $outputFilePath = Join-Path -Path $levelsOutputFolder -ChildPath $outputFileName
+
+        # Run huffmunch to compress the binary data to the output file
+        & "../../tools/huffmunch" "-B" $tempFilePath $outputFilePath
+
+        # Delete the temporary binary file
+        Remove-Item -Path $tempFilePath
+    }
 }
 
 # Compress .tmx files using huffmunch.exe and save the output as .hfm files
@@ -69,25 +119,9 @@ foreach ($tmxFile in $tmxFiles) {
     # Store the final unique filename in the tracker
     $filenameTracker[$newName] = $true
 
-    # Extract the CSV tile data from the TMX file
-    $csvData = ExtractTileLayerData -tmxFilePath $tmxFile.FullName
-
-    # Convert the CSV tile data to a byte array
-    $byteArray = Convert-CSVToByteArray -csvData $csvData
-
-    # Generate a temporary binary file path
-    $tempFilePath = [System.IO.Path]::ChangeExtension($tmxFile.FullName, ".temp")
-
-    # Write the byte array to the binary file
-    [System.IO.File]::WriteAllBytes($tempFilePath, $byteArray)
-
-    $inputFilePath = $tmxFile.FullName
-    $outputFileName = $newName + ".hfm"
-    $outputFilePath = Join-Path -Path $levelsOutputFolder -ChildPath $outputFileName
-    & "../../tools/huffmunch" "-B" $tempFilePath $outputFilePath
-
-    # Delete the temporary binary file
-    Remove-Item -Path $tempFilePath
+    $tileLayerData = ExtractTileLayerData -tmxFilePath $tmxFile.FullName
+    $byteArrayData = Convert-CSVToByteArray -tileLayerData $tileLayerData
+    CompressTileLayerData -levelName $newName -levelsOutputFolder $levelsOutputFolder -byteArrayData $byteArrayData
 }
 
 # Set the maximum size for each bank in bytes

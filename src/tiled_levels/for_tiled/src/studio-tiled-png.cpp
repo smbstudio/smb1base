@@ -47,7 +47,11 @@ public:
 	//-1 means invisible pixel
 	void write(int nesPalValue) {
 		int index = 4 * (m_X + m_Y * m_width);
-		if (nesPalValue < 0) {
+		if (nesPalValue == -1) {
+			for (int i = 0; i < 4; i++) m_data[index + i] = 30;
+			return;
+		}
+		if (nesPalValue == -2) {
 			for (int i = 0; i < 4; i++) m_data[index + i] = 0;
 			return;
 		}
@@ -70,6 +74,13 @@ public:
 	}
 };
 
+void formatArg(string& s)
+{
+	if (s.substr(0, 8) == "file:///") {
+		s.erase(0, 8);
+	}
+}
+
 int main(int argc, char* argv[])
 {
 	if (argc < 4) {
@@ -77,7 +88,15 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	ifstream fChr(argv[1], ios::in | ios::binary);
+	string chrPath = argv[1];
+	string palPath = argv[2];
+	string metatilesPath = argv[3];
+
+	formatArg(chrPath);
+	formatArg(palPath);
+	formatArg(metatilesPath);
+
+	ifstream fChr(chrPath, ios::in | ios::binary);
 	fChr.seekg(0, ios::end);
 	if (fChr.tellg() < 0x1000) {
 		cout << "error: CHR below 4 kB";
@@ -87,7 +106,7 @@ int main(int argc, char* argv[])
 	fChr.seekg(0, ios::beg);
 	fChr.read(chr, 0x1000);
 
-	ifstream fPalette(argv[2], ios::in | ios::binary);
+	ifstream fPalette(palPath, ios::in | ios::binary);
 	fPalette.seekg(0, ios::end);
 	if (fPalette.tellg() < 0x20) {
 		cout << "error: palette file is not 32 bytes";
@@ -97,7 +116,7 @@ int main(int argc, char* argv[])
 	fPalette.seekg(0, ios::beg);
 	fPalette.read(palette, 0x20);
 
-	ifstream fMetatiles(argv[3]);
+	ifstream fMetatiles(metatilesPath);
 	string fMetatilesStr((std::istreambuf_iterator<char>(fMetatiles)), istreambuf_iterator<char>());
 	fMetatiles.close();
 
@@ -134,8 +153,14 @@ int main(int argc, char* argv[])
 					tileValue += ((chr[tileOffs + tilePixelY + 8] >> (7 - tilePixelX)) << 1) & 0b10;
 
 					// this makes pixels that use palette 0 be transparent in the png
-					if (tileValue == 0) 
-						image.write(-1);
+					// (making it a little transparent and gray, so that users can see e.g. hidden blocks)
+					// (for that reason, i'm making the 0x00 blank metatile's transparent pixels completely transparent)
+					if (tileValue == 0) {
+						if (metatile == 0)
+							image.write(-2);
+						else
+							image.write(-1);
+					}
 					else 
 						image.write(palette[4 * thisMetatile.pal + tileValue]);
 
@@ -155,10 +180,10 @@ int main(int argc, char* argv[])
 	}
 
 	fpng::fpng_init();
-	fpng::fpng_encode_image_to_file("tiled.png", image.data(), 256, 256, 4);
+	fpng::fpng_encode_image_to_file("generated/tsx/temp.png", image.data(), 256, 256, 4);
 
-	ofstream tsxFile("USE_THIS.tsx");
-	tsxFile << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<tileset version=\"1.10\" tiledversion=\"1.10.2\" name=\"tiled\" tilewidth=\"16\" tileheight=\"16\" tilecount=\"256\" columns=\"16\">\n <image source=\"tiled.png\" width=\"256\" height=\"256\"/>";
+	ofstream tsxFile("generated/tsx/temp.tsx");
+	tsxFile << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<tileset version=\"1.10\" tiledversion=\"1.10.2\" name=\"tiled\" tilewidth=\"16\" tileheight=\"16\" tilecount=\"256\" columns=\"16\">\n <image source=\"temp.png\" width=\"256\" height=\"256\"/>";
 	for (int i = 0; i < numMetatiles; i++) {
 		tsxFile << "\n <tile id=\"" << i << "\" type=\"" << metatiles[i].name << "\"/>";
 	}
