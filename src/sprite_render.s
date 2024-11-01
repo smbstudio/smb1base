@@ -681,7 +681,7 @@ WriteMetasprite:
     ldy #METASPRITE_MISC_BRICK_OTHER
 CheckReplacement:
   lda Block_Metatile,x          ;check replacement metatile
-  cmp #$c4                      ;if not used block metatile, then
+  cmp #MT_EMPTY_BLOCK           ;if not used block metatile, then
   bne Exit                 ;branch ahead to use current graphics
     ldy #METASPRITE_MISC_BLOCK
     lda AreaType

@@ -755,14 +755,14 @@ WriteBlockMetatile:
   cmp #$00                ;check contents of A for blank metatile
   beq UseBOffset          ;branch if found (unconditional if branched from 8a6b)
   ldy #$00                ;load offset for brick metatile w/ line
-  cmp #$58
+  cmp #MT_BRICK_WITH_LINE_COINS
   beq UseBOffset          ;use offset if metatile is brick with coins (w/ line)
-  cmp #$51
+  cmp #MT_BREAKABLE_BRICK_WITH_LINE
   beq UseBOffset          ;use offset if metatile is breakable brick w/ line
   iny                     ;increment offset for brick metatile w/o line
-  cmp #$5d
+  cmp #MT_BRICK_COINS
   beq UseBOffset          ;use offset if metatile is brick with coins (w/o line)
-  cmp #$52
+  cmp #MT_BREAKABLE_BRICK
   beq UseBOffset          ;use offset if metatile is breakable brick w/o line
   iny                     ;if any other metatile, increment offset for empty block
 UseBOffset:
