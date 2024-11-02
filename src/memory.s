@@ -222,6 +222,10 @@ RESERVE BowserFront_Offset, 1
 RESERVE BridgeCollapseOffset, 1
 RESERVE BowserGfxFlag, 1
 
+;BSS temporary values (non NMI)
+RESERVE B0, 1
+RESERVE B1, 1
+
 RESERVE FirebarSpinSpeed, 16
 
 ; moved to abs ram

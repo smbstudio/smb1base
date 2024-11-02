@@ -15,6 +15,8 @@ function Convert-CSVToByteArray {
 
     # Process each layer's CSV data in the hashtable
     foreach ($layerName in $tileLayerData.Keys) {
+        if($layerName -eq "width"){continue}
+
         $csvData = $tileLayerData[$layerName]
 
         # Split the CSV string into individual values
@@ -23,6 +25,10 @@ function Convert-CSVToByteArray {
         # Convert each tile value to a byte and store in an array
         $byteArray = @()
         foreach ($tile in $tileData) {
+            $tile = $tile - 1
+            if($tile -eq -1) { 
+                $tile = 0
+            }
             [byte]$byte = [convert]::ToByte($tile)
             $byteArray += $byte
         }
@@ -57,6 +63,8 @@ function ExtractTileLayerData {
         }
     }
 
+    $tileLayerData["width"] = $xmlContent.map.width
+
     return $tileLayerData
 }
 
@@ -65,7 +73,8 @@ function CompressTileLayerData {
     param (
         [string]$levelName,            # Base name for the output files
         [string]$levelsOutputFolder,   # Output folder path
-        [hashtable]$byteArrayData      # Hashtable containing byte arrays for each layer
+        [hashtable]$byteArrayData,     # Hashtable containing byte arrays for each layer
+        [Int16]$levelLength
     )
 
     # Iterate through each layer in the byteArrayData hashtable
@@ -85,6 +94,13 @@ function CompressTileLayerData {
 
         # Run huffmunch to compress the binary data to the output file
         & "../../tools/huffmunch" "-B" $tempFilePath $outputFilePath
+
+        if($suffix -eq "_fg") {
+            $hfmForegroundFinalData = @()
+            $hfmForegroundFinalData += [System.BitConverter]::GetBytes($levelLength)
+            $hfmForegroundFinalData += [System.IO.File]::ReadAllBytes($outputFilePath)
+            [io.file]::WriteAllBytes($outputFilePath,$hfmForegroundFinalData)
+        }
 
         # Delete the temporary binary file
         Remove-Item -Path $tempFilePath
@@ -120,8 +136,9 @@ foreach ($tmxFile in $tmxFiles) {
     $filenameTracker[$newName] = $true
 
     $tileLayerData = ExtractTileLayerData -tmxFilePath $tmxFile.FullName
+    $length = $tileLayerData["width"]
     $byteArrayData = Convert-CSVToByteArray -tileLayerData $tileLayerData
-    CompressTileLayerData -levelName $newName -levelsOutputFolder $levelsOutputFolder -byteArrayData $byteArrayData
+    CompressTileLayerData -levelName $newName -levelsOutputFolder $levelsOutputFolder -byteArrayData $byteArrayData -levelLength $length
 }
 
 # Set the maximum size for each bank in bytes

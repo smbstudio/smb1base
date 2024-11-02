@@ -50,7 +50,12 @@ _COMMON_DEFINE_SEGMENTS = 1
 
 .include "common.s"
 .include "collision.s"
-.include "level_tiles.s"
+.if USE_TILED_LEVELS
+.include "huffmunch.s"
+.include "tiled_level_handling.s"
+;.else
+.include "vanilla_level_handling.s"
+.endif
 .include "reset.s"
 .include "game.s"
 
