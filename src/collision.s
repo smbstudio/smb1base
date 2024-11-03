@@ -131,17 +131,20 @@ BlockBufferCollision:
     lda BlockBuffer_X_Adder,y   ;add horizontal coordinate
     clc                         ;of object to value obtained using Y as offset
     adc SprObject_X_Position,x
-    sta R5                      ;store here
-    lda SprObject_PageLoc,x
-    adc #$00                    ;add carry to page location
-    and #$01                    ;get LSB, mask out all other bits
-    lsr                         ;move to carry
-    ora R5                      ;get stored value
-    ror                         ;rotate carry to MSB of A
-    lsr                         ;and effectively move high nybble to
-    lsr                         ;lower, LSB which became MSB will be
-    lsr                         ;d4 at this point
-    jsr GetBlockBufferAddr      ;get address of block buffer into $06, $07
+    ldy SprObject_PageLoc,x
+	  bcc :+
+	    iny
+	  :
+	  lsr
+	  lsr
+	  lsr
+	  lsr
+	  clc
+	  adc PageAddresses,y
+	  sta R6
+	  lda PageAddressesHi,y
+	  adc #0
+	  sta R7
     ldy R4                      ;get old contents of Y
     lda SprObject_Y_Position,x  ;get vertical coordinate of object
     clc
@@ -165,30 +168,6 @@ RetYC:
   sta R4                      ;store masked out result here
   lda R3                      ;get saved content of block buffer
   rts                         ;and leave
-
-;-------------------------------------------------------------------------------------
-;$06-$07 - used to store block buffer address used as indirect
-
-BlockBufferAddr:
-.lobytes Block_Buffer_1, Block_Buffer_2
-.hibytes Block_Buffer_1, Block_Buffer_2
-
-GetBlockBufferAddr:
-  pha                      ;take value of A, save
-    lsr                      ;move high nybble to low
-    lsr
-    lsr
-    lsr
-    tay                      ;use nybble as pointer to high byte
-    lda BlockBufferAddr+2,y  ;of indirect here
-    sta R7 
-  pla
-  and #%00001111           ;pull from stack, mask out high nybble
-  clc
-  adc BlockBufferAddr,y    ;add to low byte
-  sta R6                   ;store here and leave
-  rts
-
 
 ;-------------------------------------------------------------------------------------
 
@@ -1784,6 +1763,8 @@ PlayerHeadCollision:
     tay
     lda R6                   ;get low byte of block buffer address used in same routine
     sta Block_BBuf_Low,x     ;save as offset here to be used later
+		lda R7 
+		sta Block_BBuf_High,x    
     lda (R6),y              ;get contents of block buffer at old address at $06, $07
     jsr BlockBumpedChk       ;do a sub to check which block player bumped head on
     sta R0                   ;store metatile here

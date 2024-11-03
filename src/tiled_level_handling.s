@@ -1,20 +1,4 @@
 .segment "LEVEL"
-NUM_OF_PAGES = 20
-PageAddressesHi = PageAddresses + NUM_OF_PAGES
-PageAddresses:
-	;low
-	i .set 0
-	.repeat NUM_OF_PAGES
-	.lobytes $d0*i
-	i .set i + 1
-	.endrep
-	;high
-	i .set 0
-	.repeat NUM_OF_PAGES
-	.hibytes $d0*i+$6000
-	i .set i + 1
-	.endrep
-
 .proc AreaParserCore
 ramPtr = R0
 	ldy	CurrentPageLoc
@@ -42,6 +26,21 @@ FGLoop:
 
 .segment "FIXED"
 .include "tiled_levels/!level_structure.s"
+NUM_OF_PAGES = 20
+PageAddressesHi = PageAddresses + NUM_OF_PAGES
+PageAddresses:
+	;low
+	i .set 0
+	.repeat NUM_OF_PAGES
+	.lobytes $d0*i
+	i .set i + 1
+	.endrep
+	;high
+	i .set 0
+	.repeat NUM_OF_PAGES
+	.hibytes $d0*i+$6000
+	i .set i + 1
+	.endrep
 
 .proc LoadLevel
 levelWidth = B0 ;B1
@@ -81,10 +80,30 @@ curCol = R5
 	lda (hm_node),y
 	sta levelWidth
   sta widthLeft
+  pha
   iny
 	lda (hm_node),y
 	sta levelWidth+1
   sta widthLeft+1
+
+  ; set background's starting address ($xx00) 
+  ; (the widthLeft+1 is only lsr'd once, because the maximum number of pages is 19 anyway)
+  lsr
+  lda widthLeft
+  ror
+  lsr
+  lsr
+  lsr
+  tay
+  ; restore original value
+  pla
+  sta widthLeft
+  ; set bg addr
+  iny
+  lda PageAddresses,y
+  sta BackgroundBufferAddr
+  lda PageAddressesHi,y
+  sta BackgroundBufferAddr+1
 
   ; init huffmunch
   lda hm_node

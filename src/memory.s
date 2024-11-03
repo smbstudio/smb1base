@@ -205,6 +205,8 @@ RESERVE Block_Buffer_1, 208
 RESERVE Block_Buffer_2, 208
 RESERVE BlockBufferColumnPos, 1
 RESERVE MetatileBuffer, 13
+RESERVE BackgroundBuffer, 13
+RESERVE BackgroundBufferAddr, 2
 
 RESERVE VRAM_Buffer1_Offset, 1
 RESERVE VRAM_Buffer1, 84
@@ -284,6 +286,7 @@ RESERVE Misc_OffscreenBits, 2
 RESERVE EnemyOffscrBitsMasked, 12
 RESERVE Block_Orig_YPos, 2
 RESERVE Block_BBuf_Low, 2
+RESERVE Block_BBuf_High, 2
 RESERVE Block_Metatile, 2
 RESERVE Block_PageLoc2, 2
 RESERVE Block_RepFlag, 2

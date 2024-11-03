@@ -263,7 +263,7 @@ UpdateLoop:
     beq NextBUpd              ;branch to move onto next block object
       lda Block_BBuf_Low,x      ;get low byte of block buffer
       sta R6                    ;store into block buffer address
-      lda #>Block_Buffer_1
+      lda Block_BBuf_High,x
       sta R7                    ;set high byte of block buffer address
       lda Block_Orig_YPos,x     ;get original vertical coordinate of block object
       sta R2                    ;store here and use as offset to block buffer
@@ -720,11 +720,6 @@ SetInitNTHigh:
   sty CurrentNTAddr_High   ;store name table address
   ldy #$80
   sty CurrentNTAddr_Low
-  asl                      ;store LSB of page number in high nybble
-  asl                      ;of block buffer column position
-  asl
-  asl
-  sta BlockBufferColumnPos
   dec AreaObjectLength     ;set area object lengths for all empty
   dec AreaObjectLength+1
   dec AreaObjectLength+2

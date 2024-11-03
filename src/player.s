@@ -80,7 +80,8 @@ VineEntr:
   sta Player_State          ;otherwise set player state to climbing
   iny                       ;increment value in Y
   lda #$08                  ;set block in block buffer to cover hole, then 
-  sta Block_Buffer_1+$b4    ;use same value to force player to climb
+  ;TODO: revise this
+  ;sta Block_Buffer_1+$b4    ;use same value to force player to climb
 OffVine:
   sty DisableCollisionDet   ;set collision detection disable flag
   jsr AutoControlPlayer     ;use contents of A to move player up or right, execute sub

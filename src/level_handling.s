@@ -42,13 +42,9 @@ IncrementColumnPos:
   lda CurrentColumnPos
   and #%00001111           ;mask out higher nybble
   bne NoColWrap
-  sta CurrentColumnPos     ;if no bits left set, wrap back to zero (0-f)
-  inc CurrentPageLoc       ;and increment page number where we're at
+   sta CurrentColumnPos     ;if no bits left set, wrap back to zero (0-f)
+   inc CurrentPageLoc       ;and increment page number where we're at
 NoColWrap:
-  inc BlockBufferColumnPos ;increment column offset where we're at
-  lda BlockBufferColumnPos
-  and #%00011111           ;mask out all but 5 LSB (0-1f)
-  sta BlockBufferColumnPos ;and save
   rts
 
 ;--------------------------------------------
