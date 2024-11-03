@@ -50,10 +50,12 @@ _COMMON_DEFINE_SEGMENTS = 1
 
 .include "common.s"
 .include "collision.s"
+.include "bcd16.s"
+.include "level_handling.s"
 .if USE_TILED_LEVELS
 .include "huffmunch.s"
 .include "tiled_level_handling.s"
-;.else
+.else
 .include "vanilla_level_handling.s"
 .endif
 .include "reset.s"

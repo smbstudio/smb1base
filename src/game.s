@@ -730,7 +730,11 @@ SetInitNTHigh:
   dec AreaObjectLength+2
   lda #$0b                 ;set value for renderer to update 12 column sets
   sta ColumnSets           ;12 column sets = 24 metatile columns = 1 1/2 screens
+.if USE_TILED_LEVELS
+  jsr LoadLevel
+.else
   farcall GetAreaDataAddrs     ;get enemy and level addresses and load header
+.endif
   lda PrimaryHardMode      ;check to see if primary hard mode has been activated
   bne SetSecHard           ;if so, activate the secondary no matter where we're at
     lda WorldNumber          ;otherwise check world number

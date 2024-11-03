@@ -1,3 +1,45 @@
+.segment "LEVEL"
+NUM_OF_PAGES = 20
+PageAddressesHi = PageAddresses + NUM_OF_PAGES
+PageAddresses:
+	;low
+	i .set 0
+	.repeat NUM_OF_PAGES
+	.lobytes $d0*i
+	i .set i + 1
+	.endrep
+	;high
+	i .set 0
+	.repeat NUM_OF_PAGES
+	.hibytes $d0*i+$6000
+	i .set i + 1
+	.endrep
+
+.proc AreaParserCore
+ramPtr = R0
+	ldy	CurrentPageLoc
+	lda PageAddresses,y
+	sta ramPtr
+	lda PageAddressesHi,y
+	sta ramPtr+1
+
+FillForegroundBuff:
+	ldx #0
+	ldy CurrentColumnPos
+FGLoop:
+	lda ($00),y
+	sta MetatileBuffer,x
+	tya
+	clc
+	adc #$10
+	tay
+	inx
+	cpx #14
+	bcc FGLoop
+
+  rts
+.endproc
+
 .segment "FIXED"
 .include "tiled_levels/!level_structure.s"
 
@@ -20,9 +62,22 @@ curCol = R5
   sta CurrentBank
   BankPRGA a
 
-	ldy #0
-  sty curRow
-  sty curCol
+  ; get level timer
+	lda (hm_node),y
+  sta R0
+  iny
+	lda (hm_node),y  
+  sta R1
+  jsr bcdConvert
+  lda R3+4
+  sta GameTimerDisplay+2
+  lda R3+3
+  sta GameTimerDisplay+1
+  lda R3+2
+  sta GameTimerDisplay+0
+
+  ; get level width
+	ldy #2
 	lda (hm_node),y
 	sta levelWidth
   sta widthLeft
@@ -34,7 +89,7 @@ curCol = R5
   ; init huffmunch
   lda hm_node
   clc
-  adc #2
+  adc #4
   sta hm_node
   bcc :+
     inc hm_node+1
@@ -42,6 +97,8 @@ curCol = R5
 	;select entry $0000 (first one)
 	ldy #$00
 	ldx #$00
+  sty curRow
+  sty curCol  
 	jsr huffmunch_load
 	;out: Y:X data length size
 	;stx Length

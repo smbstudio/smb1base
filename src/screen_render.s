@@ -362,8 +362,6 @@ NoAltPal:
 ;$01 - vram buffer address table high
 
 DrawTitleScreen:
-  jsr LoadLevel
-
   lda OperMode                 ;are we in title screen mode?
   bne IncModeTask_B            ;if not, exit
 ; far TITLE

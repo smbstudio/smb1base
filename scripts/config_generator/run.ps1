@@ -15,7 +15,7 @@ function Convert-CSVToByteArray {
 
     # Process each layer's CSV data in the hashtable
     foreach ($layerName in $tileLayerData.Keys) {
-        if($layerName -eq "width"){continue}
+        if(($layerName -ne "foreground") -and ($layerName -ne "background")){continue}
 
         $csvData = $tileLayerData[$layerName]
 
@@ -64,6 +64,7 @@ function ExtractTileLayerData {
     }
 
     $tileLayerData["width"] = $xmlContent.map.width
+    $tileLayerData["timer"] = $xmlContent.map.properties.property | Where-Object { $_.name -eq "timer" } | Select-Object -ExpandProperty value
 
     return $tileLayerData
 }
@@ -74,7 +75,8 @@ function CompressTileLayerData {
         [string]$levelName,            # Base name for the output files
         [string]$levelsOutputFolder,   # Output folder path
         [hashtable]$byteArrayData,     # Hashtable containing byte arrays for each layer
-        [Int16]$levelLength
+        [Int16]$levelLength,
+        [Int16]$levelTimer
     )
 
     # Iterate through each layer in the byteArrayData hashtable
@@ -97,6 +99,7 @@ function CompressTileLayerData {
 
         if($suffix -eq "_fg") {
             $hfmForegroundFinalData = @()
+            $hfmForegroundFinalData += [System.BitConverter]::GetBytes($levelTimer)
             $hfmForegroundFinalData += [System.BitConverter]::GetBytes($levelLength)
             $hfmForegroundFinalData += [System.IO.File]::ReadAllBytes($outputFilePath)
             [io.file]::WriteAllBytes($outputFilePath,$hfmForegroundFinalData)
@@ -137,8 +140,9 @@ foreach ($tmxFile in $tmxFiles) {
 
     $tileLayerData = ExtractTileLayerData -tmxFilePath $tmxFile.FullName
     $length = $tileLayerData["width"]
+    $timer = $tileLayerData["timer"]
     $byteArrayData = Convert-CSVToByteArray -tileLayerData $tileLayerData
-    CompressTileLayerData -levelName $newName -levelsOutputFolder $levelsOutputFolder -byteArrayData $byteArrayData -levelLength $length
+    CompressTileLayerData -levelName $newName -levelsOutputFolder $levelsOutputFolder -byteArrayData $byteArrayData -levelLength $length -levelTimer $timer
 }
 
 # Set the maximum size for each bank in bytes
