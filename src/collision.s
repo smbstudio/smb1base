@@ -1289,8 +1289,7 @@ ExPipeE:
 CheckForSolidMTiles:
   tay
   lda Metatile_Attributes,y
-  lsr                       ;shift solid attribute bit into carry flag
-  lsr
+  lsr                       ;shift hard attribute bit into carry flag
   tya                       ;get original metatile value back into A
   rts
 
@@ -1298,7 +1297,6 @@ CheckForClimbMTiles:
   tay  
   lda Metatile_Attributes,y
   lsr                       ;shift climb attribute bit into carry flag
-  lsr
   lsr
   tya                       ;get original metatile value back into A
   rts
@@ -1705,8 +1703,9 @@ ExPVne:  rts                     ;finally, we're done!
 ChkInvisibleMTiles:
   tay
   lda Metatile_Attributes,y
-  and #8
-  cmp #8
+  lsr
+  lsr
+  lsr
   tya
   rts                       ;carry set = fallthrough
 

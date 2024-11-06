@@ -1,24 +1,34 @@
 .segment "LEVEL"
 .proc AreaParserCore
-ramPtr = R0
+fgPtr = R0
+bgPtr = R2
 	ldy	CurrentPageLoc
 	lda PageAddresses,y
-	sta ramPtr
+	sta fgPtr
+  clc
+  adc BackgroundBufferAddr
+  sta bgPtr
 	lda PageAddressesHi,y
-	sta ramPtr+1
+	sta fgPtr+1
+  adc BackgroundBufferAddr+1
+  sec
+  sbc #$60
+  sta bgPtr+1
 
 FillForegroundBuff:
 	ldx #0
 	ldy CurrentColumnPos
 FGLoop:
-	lda ($00),y
+	lda (fgPtr),y
 	sta MetatileBuffer,x
+	lda (bgPtr),y
+	sta BackgroundBuffer,x
 	tya
 	clc
 	adc #$10
 	tay
 	inx
-	cpx #14
+	cpx #13
 	bcc FGLoop
 
   rts
@@ -127,19 +137,19 @@ curCol = R5
 	sta ramPtr
 	lda #$60
 	sta ramPtr+1
-ReadData:
+ReadFGData:
   ; check how many bytes left
   ldx widthLeft
   beq Lwlo0
   dex
-  jmp ReadByte
+  jmp ReadFGByte
 Lwlo0:
   ldy widthLeft+1
-  beq DoneRow
+  beq DoneFGRow
   dey
   sty widthLeft+1
   dex 
-ReadByte:
+ReadFGByte:
   stx widthLeft
 
   ; read byte
@@ -151,15 +161,88 @@ ReadByte:
   tya
   and #$0f
   sta curCol
-  bne ReadData
+  bne ReadFGData
   ; next page!
   lda ramPtr
   clc
   adc #16*13
   sta ramPtr
-  bcc ReadData
+  bcc ReadFGData
   inc ramPtr+1
-  jmp ReadData
+  jmp ReadFGData
+
+DoneFGRow:
+  lda levelWidth
+  sta widthLeft
+  lda levelWidth+1
+  sta widthLeft+1
+  inc curRow
+  lda curRow
+  cmp #13
+  beq LoadBackground
+  asl
+  asl
+  asl
+  asl
+	sta ramPtr
+	lda #$60
+	sta ramPtr+1
+  lda #0
+  sta curCol
+  jmp ReadFGData
+
+LoadBackground:
+	ldy #0
+  lda BackgroundDataLo,y
+  sta hm_node
+  lda BackgroundDataHi,y
+  sta hm_node+1
+	lda BackgroundBanks,y
+  sta CurrentBank
+  BankPRGA a
+	ldy #$00
+	ldx #$00
+  sty curRow
+  sty curCol
+	jsr huffmunch_load  
+
+  lda BackgroundBufferAddr
+  sta ramPtr
+  lda BackgroundBufferAddr+1
+  sta ramPtr+1
+ReadBGData:
+  ; check how many bytes left
+  ldx widthLeft
+  beq Bwlo0
+  dex
+  jmp ReadBGByte
+Bwlo0:
+  ldy widthLeft+1
+  beq DoneRow
+  dey
+  sty widthLeft+1
+  dex 
+ReadBGByte:
+  stx widthLeft
+
+  ; read byte
+	jsr huffmunch_read
+  ldy curCol
+  sta (ramPtr),y
+  ; check if moving onto next page 
+  iny
+  tya
+  and #$0f
+  sta curCol
+  bne ReadBGData
+  ; next page!
+  lda ramPtr
+  clc
+  adc #16*13
+  sta ramPtr
+  bcc ReadBGData
+  inc ramPtr+1
+  jmp ReadBGData
 
 DoneRow:
   inc curRow
@@ -170,8 +253,11 @@ DoneRow:
   asl
   asl
   asl
+  clc
+  adc BackgroundBufferAddr
 	sta ramPtr
-	lda #$60
+	lda BackgroundBufferAddr+1
+  adc #0
 	sta ramPtr+1
   lda #0
   sta curCol
@@ -179,7 +265,7 @@ DoneRow:
   sta widthLeft
   lda levelWidth+1
   sta widthLeft+1
-  jmp ReadData
+  jmp ReadBGData
 
 LevelLoaded:
   pla

@@ -7,10 +7,9 @@ BlockGfxData:
 .byte $24, $24, $24, $24 ;air
 .byte $26, $26, $26, $26 ;air, different color
 
-interactable = 1 ;mtile is interactable
-hard = 2 ;mtile is completely hard from below (e.g. 3d solid block) 
-climbable = 4 ;mtile is climbable (e.g. residual ball block)
-fallthrough = 8 ;no foot detection on these metatiles
+hard = 1 ;mtile is completely hard from below (e.g. 3d solid block) 
+climbable = 2 ;mtile is climbable (e.g. residual ball block)
+fallthrough = 4 ;no foot detection on these metatiles
 
 pal0 = 0 << 6
 pal1 = 1 << 6
@@ -74,73 +73,73 @@ DefineMTile "MT_TALL_TREE_TOP_AND_BOTTOM_HALF", \
   pal0
 DefineMTile "MT_WARP_PIPE_END_LEFT_AND_POINTS_UP", \
   $50, $60, $51, $61, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_WARP_PIPE_END_RIGHT_AND_POINTS_UP", \
   $52, $62, $53, $63, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_DECORATION_PIPE_END_LEFT_AND_POINTS_UP", \
   $50, $60, $51, $61, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_DECORATION_PIPE_END_RIGHT_AND_POINTS_UP", \
   $52, $62, $53, $63, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_PIPE_SHAFT_LEFT", \
   $70, $70, $71, $71, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_PIPE_SHAFT_RIGHT", \
   $26, $26, $72, $72, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_TREE_LEDGE_LEFT_EDGE", \
   $59, $69, $5A, $6A, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_TREE_LEDGE_MIDDLE", \
   $5A, $6C, $5A, $6C, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_TREE_LEDGE_RIGHT_EDGE", \
   $5A, $6A, $5B, $6B, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_MUSHROOM_LEFT_EDGE", \
   $A0, $B0, $A1, $B1, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_MUSHROOM_MIDDLE", \
   $A2, $B2, $A3, $B3, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_MUSHROOM_RIGHT_EDGE", \
   $A4, $B4, $A5, $B5, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_SIDEWAYS_PIPE_END_TOP", \
   $54, $64, $55, $65, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_SIDEWAYS_PIPE_SHAFT_TOP", \
   $56, $66, $56, $66, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_SIDEWAYS_PIPE_JOINT_TOP", \
   $57, $67, $71, $71, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_SIDEWAYS_PIPE_END_BOTTOM", \
   $74, $84, $75, $85, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_SIDEWAYS_PIPE_SHAFT_BOTTOM", \
   $26, $76, $26, $76, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_SIDEWAYS_PIPE_JOINT_BOTTOM", \
   $58, $68, $71, $71, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_SEAPLANT", \
   $8C, $9C, $8D, $9D, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_BLANK_USED_ON_BRICKS_OR_BLOCKS_THAT_ARE_HIT", \
   $24, $24, $24, $24, \
-  pal0 + interactable + hard
+  pal0 + hard
 DefineMTile "MT_FLAGPOLE_BALL", \
   $24, $5F, $24, $6F, \
-  pal0 + interactable + hard + climbable
+  pal0 + hard + climbable
 DefineMTile "MT_FLAGPOLE_SHAFT", \
   $7D, $7D, $7E, $7E, \
-  pal0 + interactable + hard + climbable
+  pal0 + hard + climbable
 DefineMTile "MT_BLANK_USED_IN_CONJUNCTION_WITH_VINES", \
   $24, $24, $24, $24, \
-  pal0 + interactable + hard + climbable
+  pal0 + hard + climbable
 DefineMTile "MT_VERTICAL_ROPE", \
   $7D, $7D, $7E, $7E, \
   pal1
@@ -194,91 +193,91 @@ DefineMTile "MT_MUSHROOM_STUMP_BOTTOM", \
   pal1
 DefineMTile "MT_BREAKABLE_BRICK_WITH_LINE", \
   $47, $48, $47, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BREAKABLE_BRICK", \
   $48, $48, $48, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BREAKABLE_BRICK_NOT_USED", \
   $47, $48, $47, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_CRACKED_ROCK_TERRAIN", \
   $82, $92, $83, $93, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BRICK_WITH_LINE_POWER_UP", \
   $47, $48, $47, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BRICK_WITH_LINE_VINE", \
   $47, $48, $47, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BRICK_WITH_LINE_STAR", \
   $47, $48, $47, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BRICK_WITH_LINE_COINS", \
   $47, $48, $47, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BRICK_WITH_LINE_1_UP", \
   $47, $48, $47, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BRICK_POWER_UP", \
   $48, $48, $48, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BRICK_VINE", \
   $48, $48, $48, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BRICK_STAR", \
   $48, $48, $48, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BRICK_COINS", \
   $48, $48, $48, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_BRICK_1_UP", \
   $48, $48, $48, $48, \
-  pal1 + interactable
+  pal1
 DefineMTile "MT_HIDDEN_BLOCK_1_COIN", \
   $24, $24, $24, $24, \
-  pal1 + interactable + fallthrough
+  pal1 + fallthrough
 DefineMTile "MT_HIDDEN_BLOCK_1_UP", \
   $24, $24, $24, $24, \
-  pal1 + interactable + fallthrough
+  pal1 + fallthrough
 DefineMTile "MT_SOLID_BLOCK_3D_BLOCK", \
   $80, $90, $81, $91, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_SOLID_BLOCK_WHITE_WALL", \
   $B6, $B7, $B6, $B7, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_BRIDGE", \
   $45, $24, $45, $24, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_BULLET_BILL_CANNON_BARREL", \
   $86, $96, $87, $97, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_BULLET_BILL_CANNON_TOP", \
   $88, $98, $89, $99, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_BULLET_BILL_CANNON_BOTTOM", \
   $94, $94, $95, $95, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_BLANK_USED_FOR_JUMPSPRING", \
   $24, $24, $24, $24, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_HALF_BRICK_USED_FOR_JUMPSPRING", \
   $24, $48, $24, $48, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_SOLID_BLOCK_WATER_LEVEL_GREEN_ROCK", \
   $8A, $9A, $8B, $9B, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_HALF_BRICK", \
   $24, $48, $24, $48, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_WATER_PIPE_TOP", \
   $54, $64, $55, $65, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_WATER_PIPE_BOTTOM", \
   $74, $84, $75, $85, \
-  pal1 + interactable + hard
+  pal1 + hard
 DefineMTile "MT_FLAG_BALL_RESIDUAL_OBJECT", \
   $24, $5F, $24, $6F, \
-  pal1 + interactable + hard + climbable
+  pal1 + hard + climbable
 DefineMTile "MT_CLOUD_LEFT", \
   $24, $24, $24, $30, \
   pal2
@@ -305,28 +304,28 @@ DefineMTile "MT_WATER_OR_LAVA", \
   pal2
 DefineMTile "MT_CLOUD_LEVEL_TERRAIN", \
   $8E, $9E, $8F, $9F, \
-  pal2 + interactable + hard
+  pal2 + hard
 DefineMTile "MT_BOWSERS_BRIDGE", \
   $39, $49, $39, $49, \
-  pal2 + interactable + hard
+  pal2 + hard
 DefineMTile "MT_QUESTION_BLOCK_COIN", \
   $A8, $B8, $A9, $B9, \
-  pal3 + interactable
+  pal3
 DefineMTile "MT_QUESTION_BLOCK_POWER_UP", \
   $A8, $B8, $A9, $B9, \
-  pal3 + interactable
+  pal3
 DefineMTile "MT_COIN", \
   $AA, $BA, $AB, $BB, \
-  pal3 + interactable
+  pal3
 DefineMTile "MT_UNDERWATER_COIN", \
   $AC, $BC, $AD, $BD, \
-  pal3 + interactable
+  pal3
 DefineMTile "MT_EMPTY_BLOCK", \
   $AE, $BE, $AF, $BF, \
-  pal3 + interactable + hard
+  pal3 + hard
 DefineMTile "MT_AXE", \
   $CB, $CD, $CC, $CE, \
-  pal3 + interactable + hard
+  pal3 + hard
 
 Metatile_Attributes:
 .byte ATTR_OF_MT_BLANK

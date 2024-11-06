@@ -782,13 +782,20 @@ PutBlockMetatile:
   asl
   asl                   ;multiply A by four and use as X
   tax
-  ldy #$20              ;load high byte for name table 0
-  lda R6                ;get low byte of block buffer pointer
-  cmp #$d0              ;check to see if we're on odd-page block buffer
-  bcc SaveHAdder        ;if not, use current high byte
-  ldy #$24              ;otherwise load high byte for name table 1
+  ldy #$24              ;load high byte for odd nametable
+  sty R3
+  ; R6's 4msb is odd => means we are on an odd page
+  ; -> we need to check whether d4 is set (+1 * 16)
+  lda R6 
+  asl
+  asl
+  asl
+  asl
+  bcs SaveHAdder
+  ldy #$20              ;if even, load even nametable high byte
 SaveHAdder:
   sty R3                ;save high byte here
+  lda R6 
   and #$0f              ;mask out high nybble of block buffer pointer
   asl                   ;multiply by 2 to get appropriate name table low byte
   sta R4                ;and then store it here
@@ -845,7 +852,7 @@ RemBridge:
 ;$06 - metatile graphics table address low
 ;$07 - metatile graphics table address high
 
-RenderAreaGraphics:
+.proc RenderAreaGraphics
             lda CurrentColumnPos         ;store LSB of where we're at
             and #$01
             sta R5 
@@ -862,11 +869,15 @@ RenderAreaGraphics:
             tax
 DrawMTLoop: stx R1                       ;store init value of 0 or incremented offset for buffer
             lda MetatileBuffer,x         ;get first metatile number, and mask out all but 2 MSB
+            bne DoForegroundMtile
+              lda BackgroundBuffer,x
+DoForegroundMtile:
+            sta R2 ;store metatile in R2 temporarily
             tay
             lda Metatile_Attributes,y
             and #%11000000
             sta R3                       ;store attribute table bits here
-            lda MetatileBuffer,x
+            lda R2 
             asl
             rol
             rol
@@ -876,7 +887,7 @@ DrawMTLoop: stx R1                       ;store init value of 0 or incremented o
             sta R7
             lda #<Metatile_Definitions
             sta R6
-            lda MetatileBuffer,x         ;get metatile number again
+            lda R2                       ;get metatile number again
             asl                          ;multiply by 4 and use as tile offset
             asl
             sta R2 
@@ -939,6 +950,7 @@ SetAttrib:  lda AttributeBuffer,y        ;get previously saved bits from before
             eor #%00000100               ;to move onto the next appropriate name table
             sta CurrentNTAddr_High
 ExitDrawM:  jmp SetVRAMCtrl              ;jump to set buffer to $0341 and leave
+.endproc
 
 ;-------------------------------------------------------------------------------------
 ;$00 - temp attribute table address high (big endian order this time!)
