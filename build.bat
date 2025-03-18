@@ -22,3 +22,11 @@ tools\Windows\cc65\bin\cl65 ^
   -o build\smb1base.nes ^
   !options! ^
    ./src/main.c ./src/entrypoint.s
+
+if NOT ["%errorlevel%"]==["0"] ( 
+   if NOT ["%1"]==["no_pause"] (
+      echo.
+      echo One or more build errors need to be resolved
+      pause
+   )
+)

@@ -11,7 +11,8 @@
                 "command": "cmd",
                 "args": [
                     "/c",
-                    "${workspaceFolder}\\build.bat"
+                    "${workspaceFolder}\\build.bat",
+                    "no_pause"
                 ]
             },
             "osx": {
