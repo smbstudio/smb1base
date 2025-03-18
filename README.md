@@ -13,18 +13,31 @@ mod for Mario!
 ### Features
 
 - Easy to build; just run `build.sh` or `build.bat`
+
 - Flexible feature set (check out `options.s` for all available options!)
+
 - Multiple optional audio engines available to allow importing songs from modern tools like Famitracker or Famistudio
+  - The latest DN famitracker is supported through bhop (https://github.com/Dn-Programming-Core-Management/Dn-FamiTracker/releases/)
+  - Famistudio support is kept up to date with the latest (https://famistudio.org/)
+  - Also supports using custom music engines along side the vanilla sound effect engine, since nothing can really replicate the crisp SFX from vanilla better than the vanilla engine.
+
 - New code features including the following:
   - 8x16 sprite mode in use to double the maximum number of sprites on screen
   - New metasprite based rendering code to make it easy to add new enemies and animations to the game
   - Anti-lag code to hide lag frames and get smoother gameplay
   - RAM values are relocatable, making it easy to add new content that needs RAM
+
 - Level data importer for use with tools like Greated or SMBUtil
+
 - Code is split into banks of 8kb with only 16kb of fixed space required.
   - This frees up the $c000 region to be used for banked DPCM
+
 - Minor optimizations for the original game, removing residual code and cleaning up some small oddities
-- Optional VSCode integration
+
+- Optional VSCode integration with the following features
+  - Syntax highlighting
+  - Inline error reporting (error squigglies you can hover to see whats wrong)
+  - Automatic compile on save
 
 ### How to use
 
