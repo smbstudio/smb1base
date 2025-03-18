@@ -3,9 +3,15 @@
 ; Internal validation for the options. If you see one of these error messages, you need to follow the instructions and
 ; update the options above.
 
-.macro bool_option name
+.macro bool_option name, default
+.local DefaultVal
+  .ifnblank default
+  DefaultVal .set default
+  .else
+  DefaultVal .set 0
+  .endif
   .if .not .defined(.ident(.string(name)))
-    .ident(.string(name)) .set 0
+    .ident(.string(name)) .set DefaultVal
   .elseif .not ((.ident(.string(name))=1) .or (.ident(.string(name))=0))
     ; if you get this error then you've set a boolean config option to something other than 0 or 1
     .error .sprintf("Boolean Option `%s` was set to a value other than 0 or 1", .string(name))
@@ -14,18 +20,23 @@
   .ifdef PRINT_OPTIONS_FOR_C
     .if PRINT_OPTIONS_FOR_C
       .out .sprintf("#ifndef %s", .string(name))
-      .out .sprintf("  #define %s 0", .string(name))
+      .out .sprintf("  #define %s %d", .string(name), DefaultVal)
       .out "#endif"
     .endif
   .endif
 .endmacro
 
-.macro num_option name
+.macro num_option name, default
 ; Dumb work around to check if something is numeric
-.local Num
+.local Num, DefaultVal
 Num = 123
+  .ifnblank default
+  DefaultVal .set default
+  .else
+  DefaultVal .set 0
+  .endif
   .if .not .defined(.ident(.string(name)))
-    .ident(.string(name)) .set 0
+    .ident(.string(name)) .set DefaultVal
     ; Check if its numeric
     ; match only checks that the types are the same between the two tokens.
   .elseif .not ( .match ( {.ident(.string(name))}, Num ) )
@@ -36,7 +47,7 @@ Num = 123
   .ifdef PRINT_OPTIONS_FOR_C
     .if PRINT_OPTIONS_FOR_C
       .out .sprintf("#ifndef %s", .string(name))
-      .out .sprintf("  #define %s 0", .string(name))
+      .out .sprintf("  #define %s %d", .string(name), DefaultVal)
       .out "#endif"
     .endif
   .endif
@@ -65,6 +76,7 @@ bool_option USE_MMC5_AUDIO
 bool_option USE_VRC7_AUDIO
 bool_option USE_VANILLA_MUSIC
 bool_option USE_FAMISTUDIO_MUSIC
+bool_option USE_BHOP_MUSIC
 
 bool_option USE_VANILLA_SFX
 bool_option USE_CUSTOM_ENGINE_SFX
@@ -97,7 +109,7 @@ bool_option DEBUG_DISPLAY_VISUAL_FRAMETIME
   .fatal "Invalid Options selected"
 .endif
 
-.if (.not USE_VANILLA_MUSIC) .and (.not USE_FAMISTUDIO_MUSIC)
+.if (.not USE_VANILLA_MUSIC) .and (.not USE_FAMISTUDIO_MUSIC) .and (.not USE_BHOP_MUSIC)
   .error "Must select at least one audio engine. Either VANILLA or FAMISTUDIO"
   .fatal "Invalid Options selected"
 .endif

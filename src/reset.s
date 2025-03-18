@@ -7,7 +7,7 @@
     .word (Start)
     .word (IrqScrollSplit)  ;unused
 
-.segment "FIXED"
+.segment "CODE"
 
 .proc IrqScrollSplit
   pha
@@ -71,8 +71,9 @@ DelayACycles:
   rti
 .endproc
 
-
 ;-------------------------------------------------------------------------------------
+
+.segment "FIXED"
 
 .proc Start
   sei                          ;pretty standard 6502 type init here
@@ -141,6 +142,8 @@ FinializeMarioInit:
 ;$00 - vram buffer address table low
 ;$01 - vram buffer address table high
 
+.segment "CODE"
+
 clabel UpdateScreen
 
 WriteBufferToScreen:
@@ -203,6 +206,7 @@ InitScroll:
   rts
 .endproc
 
+.segment "FIXED"
 .proc NonMaskableInterrupt
   pha
   phx
@@ -350,6 +354,7 @@ OnCooldown:
 
 .endproc
 
+.segment "CODE"
 ;-------------------------------------------------------------------------------------
 ;$00 - vram buffer address table low, also used for pseudorandom bit
 ;$01 - vram buffer address table high
@@ -494,7 +499,7 @@ WorldSelectMessage2:
   .byte $00
 
 ;-------------------------------------------------------------------------------------
-
+.segment "FIXED"
 ;$06 - RAM address low
 ;$07 - RAM address high
 InitializeMemoryRAMLo = R6

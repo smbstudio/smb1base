@@ -29,6 +29,13 @@ labelled_segment DPCM_BANK0, LOWCODE, DECODE, MUSIC_ENGINE, METASPRITE
 	.assert >(label_) = >*, error, "Page crossing in timing sensitive code detected! If you see this error then you need to rearrange the code so this branch doesn't cross a page"
 .endmacro
 
+
+.ifdef MMC5_PRG_ROM
+BANK_ADJUST .set $80
+.else
+BANK_ADJUST .set $80
+.endif
+
 .macro phx
   txa
   pha

@@ -34,16 +34,25 @@ RESERVE PauseModeFlag, 1
 .include "vanilla_sfx.s"
 .endif
 
+.if ::USE_VANILLA_MUSIC = 0
 
-.if ::USE_FAMISTUDIO_MUSIC
 .proc CustomMusicLoopCallback
   lda #1
   sta MusicLooped
   rts
 .endproc
+
+.if ::USE_FAMISTUDIO_MUSIC
 .include "driver_famistudio.s"
 .include "custom_music.s"
 .endif
+
+.if ::USE_BHOP_MUSIC
+.include "driver_bhop.s"
+.include "custom_music.s"
+.endif
+
+.endif ; ::USE_VANILLA_MUSIC = 0
 
 .endif
 
@@ -73,10 +82,15 @@ RESERVE PauseModeFlag, 1
   lda CurrentBank
   pha
     SFXPlayback
-    MusicPlayback
 
   .if ::USE_VANILLA_SFX = 1 && ::USE_VANILLA_MUSIC <> 1
-    DriverMusicMixAudio
+    .if ::USE_FAMISTUDIO_MUSIC
+      MusicPlayback
+      DriverMusicMixAudio
+    .elseif ::USE_BHOP_MUSIC
+      DriverMusicMixAudio
+      MusicPlayback
+    .endif
   .endif
 
   pla
