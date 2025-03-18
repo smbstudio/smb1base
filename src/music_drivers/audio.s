@@ -91,6 +91,8 @@ RESERVE PauseModeFlag, 1
       DriverMusicMixAudio
       MusicPlayback
     .endif
+  .else
+    MusicPlayback
   .endif
 
   pla
