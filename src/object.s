@@ -1649,7 +1649,8 @@ NoFBall:
   rts                          ;leave
 
 FireballXSpdData:
-	.byte $40, $c0
+  .byte $40, $c0
+  .byte $8c ; glitch speed used in vanilla for left+right fireballs
 .endproc
 
 BubbleCheck:
