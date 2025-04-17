@@ -204,6 +204,9 @@ DrawFloateyNumber_Coin:
 @NotRsNum:
   lda #METASPRITE_NUMBER_200
   sta MiscMetasprite,x
+  ; Force the number metasprite to always face the correct direction
+  lda #1
+  sta Enemy_MovingDir+12,x
   rts
 
 JumpingCoinTiles:
