@@ -2627,6 +2627,8 @@ FlagpoleObject:
   sta FlagpoleFNum_Y_Pos   ;set initial vertical coordinate for flagpole's floatey number
   lda #FlagpoleFlagObject
   sta Enemy_ID,x           ;set flag identifier, note that identifier and coordinates
+  lda #1
+  sta Enemy_MovingDir,x      ; force the flag to always face the same certain direction
   inc Enemy_Flag,x         ;use last space in enemy object buffer
 FlagpoleFull:
   rts
