@@ -313,8 +313,8 @@ Exit:
   ldy #METASPRITE_GOOMBA_WALKING_1
   cmp #$02              ;check for defeated state
   bcc GmbaAnim          ;if not defeated, go ahead and animate
-    ; check if the death is from being bumped. if its bumped then d5 is set
-    cmp #4        ;check for enemy stomped
+    ; check if the death is from being bumped or shell killed
+    and #%00100000 ; death from stomp or shell
     bne :+
       ; goomba was squished so use that metasprite instead
       ldy #METASPRITE_GOOMBA_DEAD
@@ -323,7 +323,7 @@ Exit:
     lda Enemy_SprAttrib,x
     ora #%10000000
     sta Enemy_SprAttrib,x
-    bne Exit
+    bne Exit ; unconditional
 GmbaAnim:
   and #%00100000        ;check for d5 set in enemy object state
   ora TimerControl      ;or timer disable flag set
