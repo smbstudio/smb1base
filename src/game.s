@@ -633,6 +633,7 @@ ExitColorRot: rts                      ;leave
 
 ;-------------------------------------------------------------------------------------
 PrimaryGameSetup:
+  lda #1
   sta FetchNewGameTimerFlag   ;set flag to load game timer from header
   sta PlayerSize              ;set player's size to small
   lda #$02
@@ -871,7 +872,7 @@ ChkSelect:
   bcs ResetTitle              ;if carry flag set, demo over, thus branch
   jmp RunDemo                 ;otherwise, run game engine for demo
 ChkWorldSel:
-  ldx #01 ;WorldSelectEnableFlag   ;check to see if world selection has been enabled ;just enable it without enabling hard mode -Cantersoft
+  ldx WorldSelectEnableFlag   ;check to see if world selection has been enabled
   beq NullJoypad
   cmp #B_Button               ;if so, check to see if the B button was pressed
   bne NullJoypad

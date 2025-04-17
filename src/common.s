@@ -643,3 +643,17 @@ ExitGetM:
   rts
 .endproc
 
+; used in both frenzy and bowser code
+.proc SetFlameTimer
+  ldy BowserFlameTimerCtrl  ;load counter as offset
+  inc BowserFlameTimerCtrl  ;increment
+  lda BowserFlameTimerCtrl  ;mask out all but 3 LSB
+  and #%00000111            ;to keep in range of 0-7
+  sta BowserFlameTimerCtrl
+  lda FlameTimerData,y      ;load value to be used then leave
+ExFl:
+  rts
+
+FlameTimerData:
+  .byte $bf, $40, $bf, $bf, $bf, $40, $40, $bf
+.endproc
