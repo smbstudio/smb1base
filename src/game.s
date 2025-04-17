@@ -633,7 +633,7 @@ ExitColorRot: rts                      ;leave
 
 ;-------------------------------------------------------------------------------------
 PrimaryGameSetup:
-  lda #$01
+  lda #1
   sta FetchNewGameTimerFlag   ;set flag to load game timer from header
   sta PlayerSize              ;set player's size to small
   lda #$02
