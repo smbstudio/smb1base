@@ -136,9 +136,13 @@ GameCoreRoutine:
   
   farcall GameRoutines           ;execute one of many possible subs
 
-  ; lda #0
-  ; sta PlayerOAMOffset
-  lda #6 * 4 ; save enough room to draw the player first later (and the mouse cursor)
+  .if MOUSE_DISPLAY_CURSOR
+    ; save enough room to draw the player first later (and the mouse cursor)
+    lda #4 * 4 + 2 * 4
+  .else
+    ; save enough room to draw the player first later
+    lda #4 * 4
+  .endif
   sta CurrentOAMOffset
 
   lda OperMode_Task          ;check major task of operating mode
