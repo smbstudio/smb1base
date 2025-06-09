@@ -350,15 +350,13 @@ RendBBuf:
     ldy #$00                   ;init index regs and start at beginning of smaller buffer
 ChkMTLow:
     sty R0 
-    lda MetatileBuffer,x       ;load stored metatile number
-    and #%11000000             ;mask out all but 2 MSB
-    asl
-    rol                        ;make %xx000000 into %000000xx
-    rol
-    tay                        ;use as offset in Y
-    lda MetatileBuffer,x       ;reload original unmasked value here
-    cmp BlockBuffLowBounds,y   ;check for certain values depending on bits set
-    bcs StrBlock               ;if equal or greater, branch
+    ldy MetatileBuffer,x       ;load stored metatile number
+    ; If its interactable at all (ie it has attributes that aren't a palette)
+    lda MTileAttribute,y
+    and #%00111111
+    cmp #1 ; set the carry if there is any attributes
+    tya    ; and restore the tile id to A
+    bcs StrBlock               ;if it has an attribute, branch
       lda #$00                   ;if less, init value before storing
 StrBlock:
     ldy R0                     ;get offset for block buffer
@@ -372,10 +370,6 @@ StrBlock:
     bcc ChkMTLow               ;continue until we pass last row, then leave
   rts
 
-;numbers lower than these with the same attribute bits
-;will not be stored in the block buffer
-BlockBuffLowBounds:
-  .byte $10, $51, $88, $c0
 
 .endproc
 

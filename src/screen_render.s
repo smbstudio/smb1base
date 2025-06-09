@@ -832,78 +832,79 @@ BlockGfxData:
 ;$07 - metatile graphics table address high
 
 RenderAreaGraphics:
-            lda CurrentColumnPos         ;store LSB of where we're at
-            and #$01
-            sta R5 
-            ldy VRAM_Buffer2_Offset      ;store vram buffer offset
-            sty R0 
-            lda CurrentNTAddr_Low        ;get current name table address we're supposed to render
-            sta VRAM_Buffer2+1,y
-            lda CurrentNTAddr_High
-            sta VRAM_Buffer2,y
-            lda #$9a                     ;store length byte of 26 here with d7 set
-            sta VRAM_Buffer2+2,y         ;to increment by 32 (in columns)
-            lda #$00                     ;init attribute row
-            sta R4 
-            tax
-DrawMTLoop: stx R1                       ;store init value of 0 or incremented offset for buffer
-            lda MetatileBuffer,x         ;get first metatile number, and mask out all but 2 MSB
-            and #%11000000
-            sta R3                       ;store attribute table bits here
-            asl                          ;note that metatile format is:
-            rol                          ;%xx000000 - attribute table bits, 
-            rol                          ;%00xxxxxx - metatile number
-            tay                          ;rotate bits to d1-d0 and use as offset here
-            lda MetatileGraphics_Low,y   ;get address to graphics table from here
-            sta R6 
-            lda MetatileGraphics_High,y
-            sta R7 
-            lda MetatileBuffer,x         ;get metatile number again
-            asl                          ;multiply by 4 and use as tile offset
-            asl
-            sta R2 
-            lda AreaParserTaskNum        ;get current task number for level processing and
-            and #%00000001               ;mask out all but LSB, then invert LSB, multiply by 2
-            eor #%00000001               ;to get the correct column position in the metatile,
-            asl                          ;then add to the tile offset so we can draw either side
-            adc R2                       ;of the metatiles
-            tay
-            ldx R0                       ;use vram buffer offset from before as X
-            lda (R6),y
-            sta VRAM_Buffer2+3,x         ;get first tile number (top left or top right) and store
-            iny
-            lda (R6),y                  ;now get the second (bottom left or bottom right) and store
-            sta VRAM_Buffer2+4,x
-            ldy R4                       ;get current attribute row
-            lda R5                       ;get LSB of current column where we're at, and
-            bne RightCheck               ;branch if set (clear = left attrib, set = right)
-            lda R1                       ;get current row we're rendering
-            lsr                          ;branch if LSB set (clear = top left, set = bottom left)
-            bcs LLeft
-            rol R3                       ;rotate attribute bits 3 to the left
-            rol R3                       ;thus in d1-d0, for upper left square
-            rol R3 
-            jmp SetAttrib
-RightCheck: lda R1                       ;get LSB of current row we're rendering
-            lsr                          ;branch if set (clear = top right, set = bottom right)
-            bcs NextMTRow
-            lsr R3                       ;shift attribute bits 4 to the right
-            lsr R3                       ;thus in d3-d2, for upper right square
-            lsr R3 
-            lsr R3 
-            jmp SetAttrib
-LLeft:      lsr R3                       ;shift attribute bits 2 to the right
-            lsr R3                       ;thus in d5-d4 for lower left square
-NextMTRow:  inc R4                       ;move onto next attribute row  
-SetAttrib:  lda AttributeBuffer,y        ;get previously saved bits from before
-            ora R3                       ;if any, and put new bits, if any, onto
-            sta AttributeBuffer,y        ;the old, and store
-            inc R0                       ;increment vram buffer offset by 2
-            inc R0 
-            ldx R1                       ;get current gfx buffer row, and check for
-            inx                          ;the bottom of the screen
-            cpx #$0d
-            bcc DrawMTLoop               ;if not there yet, loop back
+  lda CurrentColumnPos         ;store LSB of where we're at
+  and #$01
+  sta R5
+  ldy VRAM_Buffer2_Offset      ;store vram buffer offset
+  sty R0
+  lda CurrentNTAddr_Low        ;get current name table address we're supposed to render
+  sta VRAM_Buffer2+1,y
+  lda CurrentNTAddr_High
+  sta VRAM_Buffer2,y
+  lda #$9a                     ;store length byte of 26 here with d7 set
+  sta VRAM_Buffer2+2,y         ;to increment by 32 (in columns)
+  lda #$00                     ;init attribute row
+  sta R4
+  tax
+DrawMTLoop: 
+  stx R1                       ;store init value of 0 or incremented offset for buffer
+
+  ldy MetatileBuffer,x         ;get metatile number in y
+  ldx R0
+  lda AreaParserTaskNum        ;get current task number for level processing and check bit 0
+  lsr                          ;if the carry is clear, then we are rendering the second row of mtiles, so use the right versions
+  bcc @RightSideOfMtile
+    ; Rendering the left side of the metatile, so load and store the two tiles for this column
+    lda MTileTopLeft,y
+    sta VRAM_Buffer2+3,x
+    lda MTileBotLeft,y
+    sta VRAM_Buffer2+4,x
+    jmp @UpdateAttributes
+@RightSideOfMtile:
+    ; Render the right side tiles and then fallthrough to get the attributes and update them
+    lda MTileTopRight,y
+    sta VRAM_Buffer2+3,x
+    lda MTileBotRight,y
+    sta VRAM_Buffer2+4,x
+    ; fallthrough
+@UpdateAttributes:
+  lda MTileAttribute,y
+  and #%11000000
+  sta R3                       ;store attribute table bits here
+  ldy R4                       ;get current attribute row
+  lda R5                       ;get LSB of current column where we're at, and
+  bne RightCheck               ;branch if set (clear = left attrib, set = right)
+    lda R1                       ;get current row we're rendering
+    lsr                          ;branch if LSB set (clear = top left, set = bottom left)
+    bcs LLeft
+      rol R3                       ;rotate attribute bits 3 to the left
+      rol R3                       ;thus in d1-d0, for upper left square
+      rol R3 
+      jmp SetAttrib
+RightCheck:
+  lda R1                       ;get LSB of current row we're rendering
+  lsr                          ;branch if set (clear = top right, set = bottom right)
+  bcs NextMTRow
+    lsr R3                       ;shift attribute bits 4 to the right
+    lsr R3                       ;thus in d3-d2, for upper right square
+    lsr R3 
+    lsr R3 
+    jmp SetAttrib
+LLeft:
+    lsr R3                       ;shift attribute bits 2 to the right
+    lsr R3                       ;thus in d5-d4 for lower left square
+NextMTRow:
+    inc R4                       ;move onto next attribute row  
+SetAttrib:
+  lda AttributeBuffer,y        ;get previously saved bits from before
+  ora R3                       ;if any, and put new bits, if any, onto
+  sta AttributeBuffer,y        ;the old, and store
+  inc R0                       ;increment vram buffer offset by 2
+  inc R0 
+  ldx R1                       ;get current gfx buffer row, and check for
+  inx                          ;the bottom of the screen
+  cpx #$0d
+  bcc DrawMTLoop               ;if not there yet, loop back
             ldy R0                       ;get current vram buffer offset, increment by 3
             iny                          ;(for name table address and length bytes)
             iny
@@ -974,239 +975,185 @@ SetVRAMCtrl: lda #$06
 
 ;-------------------------------------------------------------------------------------
 ;METATILE GRAPHICS TABLE
+MTILE_CURRENT_INDEX .set $00
+.macro MTileDefine tl, bl, tr, br, attr
+.ident(.sprintf("MTILE_TL_%d", MTILE_CURRENT_INDEX)) = tl
+.ident(.sprintf("MTILE_BL_%d", MTILE_CURRENT_INDEX)) = bl
+.ident(.sprintf("MTILE_TR_%d", MTILE_CURRENT_INDEX)) = tr
+.ident(.sprintf("MTILE_BR_%d", MTILE_CURRENT_INDEX)) = br
+.ident(.sprintf("MTILE_AT_%d", MTILE_CURRENT_INDEX)) = attr
+MTILE_CURRENT_INDEX .set MTILE_CURRENT_INDEX + 1
+.endmacro
 
-.define MetatileGraphics Palette0_MTiles, Palette1_MTiles, Palette2_MTiles, Palette3_MTiles
-MetatileGraphics_Low: .lobytes MetatileGraphics
-MetatileGraphics_High: .hibytes MetatileGraphics
+MTILE_SOLID     = 1 << 0 ; Blocks that are collidable at all
+MTILE_CLIMB     = 1 << 1 ; Climbable blocks
+MTILE_BUMP      = 1 << 2 ; Solid blocks that also make a bump noise when hitting them with your head
+; MTILE_DAMAGE    = 1 << 3 ; unimplemented
+; MTILE_KILL      = 1 << 4 ; unimplemented
+; MTILE_SWIM      = 1 << 5 ; unimplemented
+MTILE_PALETTE_0 = 0 << 6
+MTILE_PALETTE_1 = 1 << 6
+MTILE_PALETTE_2 = 2 << 6
+MTILE_PALETTE_3 = 3 << 6
+; TODO: consider making a second batch of table entries for extended attributes
+; TODO: update the level format to condense the table (remove the palette from bit 6/7 and renumber the metatiles?)
+; could maybe pull this off by changing all of the metatiles in level_tiles.s without touching the level format (so it should still be possible to use existing level editors)
 
-Palette0_MTiles_Old:
-  .byte $24, $24, $24, $24 ;blank
-  .byte $27, $27, $27, $27 ;black metatile
-  BUSH_TOPLEFT_METATILE = $00 + (* - Palette0_MTiles_Old) / 4
-  .byte $24, $24, $24, $35 ;bush left
-  BUSH_MIDDLE_METATILE = $00 + (* - Palette0_MTiles_Old) / 4
-  .byte $36, $25, $37, $25 ;bush middle
-  BUSH_TOPMIDDLE_METATILE = $00 + (* - Palette0_MTiles_Old) / 4
-  .byte $24, $38, $24, $24 ;bush right
-  MOUNTAIN_MIDLEFT_METATILE = $00 + (* - Palette0_MTiles_Old) / 4
-  .byte $24, $30, $30, $26 ;mountain left
-  MOUNTAIN_MIDMID_METATILE = $00 + (* - Palette0_MTiles_Old) / 4
-  .byte $26, $26, $34, $26 ;mountain left bottom/middle center
-  MOUNTAIN_MIDTOP_METATILE = $00 + (* - Palette0_MTiles_Old) / 4
-  .byte $24, $31, $24, $32 ;mountain middle top
-  MOUNTAIN_MIDRIGHT_METATILE = $00 + (* - Palette0_MTiles_Old) / 4
-  .byte $33, $26, $24, $33 ;mountain right
-  MOUNTAIN_BOTRIGHT_METATILE = $00 + (* - Palette0_MTiles_Old) / 4
-  .byte $34, $26, $26, $26 ;mountain right bottom
-  MOUNTAIN_TOPRIGHT_METATILE = $00 + (* - Palette0_MTiles_Old) / 4
-  MOUNTAIN_BOTMID_METATILE = $00 + (* - Palette0_MTiles_Old) / 4
-  .byte $26, $26, $26, $26 ;mountain middle bottom
+MTILE_CURRENT_INDEX .set $00
+  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_0 ;blank
+  MTileDefine $27, $27, $27, $27, MTILE_PALETTE_0 ;black metatile
+  MTileDefine $24, $24, $24, $30, MTILE_PALETTE_0 ;bush left
+  MTileDefine $31, $25, $32, $25, MTILE_PALETTE_0 ;bush middle
+  MTileDefine $24, $33, $24, $24, MTILE_PALETTE_0 ;bush right
+  MTileDefine $24, $34, $34, $26, MTILE_PALETTE_0 ;mountain left
+  MTileDefine $26, $26, $38, $26, MTILE_PALETTE_0 ;mountain left bottom/middle center
+  MTileDefine $24, $35, $24, $36, MTILE_PALETTE_0 ;mountain middle top
+  MTileDefine $37, $26, $24, $37, MTILE_PALETTE_0 ;mountain right
+  MTileDefine $38, $26, $26, $26, MTILE_PALETTE_0 ;mountain right bottom
+  MTileDefine $26, $26, $26, $26, MTILE_PALETTE_0 ;mountain middle bottom
+  MTileDefine $24, $44, $24, $44, MTILE_PALETTE_0 ;bridge guardrail
+  MTileDefine $24, $CF, $CF, $24, MTILE_PALETTE_0 ;chain
+  MTileDefine $3E, $4E, $3F, $4F, MTILE_PALETTE_0 ;tall tree top, top half
+  MTileDefine $3E, $4C, $3F, $4D, MTILE_PALETTE_0 ;short tree top
+  MTileDefine $4E, $4C, $4F, $4D, MTILE_PALETTE_0 ;tall tree top, bottom half
+  MTileDefine $50, $60, $51, $61, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;warp pipe end left, points up
+  MTileDefine $52, $62, $53, $63, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;warp pipe end right, points up
+  MTileDefine $50, $60, $51, $61, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;decoration pipe end left, points up
+  MTileDefine $52, $62, $53, $63, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;decoration pipe end right, points up
+  MTileDefine $70, $70, $71, $71, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;pipe shaft left
+  MTileDefine $26, $26, $72, $72, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;pipe shaft right
+  MTileDefine $59, $69, $5A, $6A, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;tree ledge left edge
+  MTileDefine $5A, $6C, $5A, $6C, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;tree ledge middle
+  MTileDefine $5A, $6A, $5B, $6B, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;tree ledge right edge
+  MTileDefine $A0, $B0, $A1, $B1, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;mushroom left edge
+  MTileDefine $A2, $B2, $A3, $B3, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;mushroom middle
+  MTileDefine $A4, $B4, $A5, $B5, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;mushroom right edge
+  MTileDefine $54, $64, $55, $65, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe end top
+  MTileDefine $56, $66, $56, $66, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe shaft top
+  MTileDefine $57, $67, $71, $71, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe joint top
+  MTileDefine $74, $84, $75, $85, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe end bottom
+  MTileDefine $26, $76, $26, $76, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe shaft bottom
+  MTileDefine $58, $68, $71, $71, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe joint bottom
+  MTileDefine $8C, $9C, $8D, $9D, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;seaplant
+  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;blank, used on bricks or blocks that are hit
+  MTileDefine $24, $5F, $24, $6F, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB  ;flagpole ball
+  MTileDefine $7D, $7D, $7E, $7E, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB  ;flagpole shaft
+  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB  ;blank, used in conjunction with vines
 
-  .byte $24, $c0, $24, $c0 ;bridge guardrail
-  .byte $24, $7f, $7f, $24 ;chain
-  .byte $b8, $ba, $b9, $bb ;tall tree top, top half
-  .byte $b8, $bc, $b9, $bd ;short tree top
-  .byte $ba, $bc, $bb, $bd ;tall tree top, bottom half
-  .byte $60, $64, $61, $65 ;warp pipe end left, points up
-  .byte $62, $66, $63, $67 ;warp pipe end right, points up
-  .byte $60, $64, $61, $65 ;decoration pipe end left, points up
-  .byte $62, $66, $63, $67 ;decoration pipe end right, points up
-  .byte $68, $68, $69, $69 ;pipe shaft left
-  .byte $26, $26, $6a, $6a ;pipe shaft right
-  .byte $4b, $4c, $4d, $4e ;tree ledge left edge
-  .byte $4d, $4f, $4d, $4f ;tree ledge middle
-  .byte $4d, $4e, $50, $51 ;tree ledge right edge
-  .byte $6b, $70, $2c, $2d ;mushroom left edge
-  .byte $6c, $71, $6d, $72 ;mushroom middle
-  .byte $6e, $73, $6f, $74 ;mushroom right edge
-  .byte $86, $8a, $87, $8b ;sideways pipe end top
-  .byte $88, $8c, $88, $8c ;sideways pipe shaft top
-  .byte $89, $8d, $69, $69 ;sideways pipe joint top
-  .byte $8e, $91, $8f, $92 ;sideways pipe end bottom
-  .byte $26, $93, $26, $93 ;sideways pipe shaft bottom
-  .byte $90, $94, $69, $69 ;sideways pipe joint bottom
-  .byte $a4, $e9, $ea, $eb ;seaplant
-  .byte $24, $24, $24, $24 ;blank, used on bricks or blocks that are hit
-  .byte $24, $2f, $24, $3d ;flagpole ball
-  .byte $a2, $a2, $a3, $a3 ;flagpole shaft
-  .byte $24, $24, $24, $24 ;blank, used in conjunction with vines
+MTILE_CURRENT_INDEX .set $40
+  MTileDefine $7D, $7D, $7E, $7E, MTILE_PALETTE_1 ;vertical rope
+  MTileDefine $5C, $24, $5C, $24, MTILE_PALETTE_1 ;horizontal rope
+  MTileDefine $24, $7D, $5D, $6D, MTILE_PALETTE_1 ;left pulley
+  MTileDefine $5E, $6E, $24, $7E, MTILE_PALETTE_1 ;right pulley
+  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 ;blank used for balance rope
+  MTileDefine $77, $48, $78, $48, MTILE_PALETTE_1 ;castle top
+  MTileDefine $48, $48, $27, $27, MTILE_PALETTE_1 ;castle window left
+  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 ;castle brick wall
+  MTileDefine $27, $27, $48, $48, MTILE_PALETTE_1 ;castle window right
+  MTileDefine $79, $48, $7A, $48, MTILE_PALETTE_1 ;castle top w/ brick
+  MTileDefine $7B, $27, $7C, $27, MTILE_PALETTE_1 ;entrance top
+  MTileDefine $27, $27, $27, $27, MTILE_PALETTE_1 ;entrance bottom
+  MTileDefine $73, $73, $73, $73, MTILE_PALETTE_1 ;green ledge stump
+  MTileDefine $3A, $4A, $3B, $4B, MTILE_PALETTE_1 ;fence
+  MTileDefine $3C, $3C, $3D, $3D, MTILE_PALETTE_1 ;tree trunk
+  MTileDefine $A6, $4E, $A7, $4F, MTILE_PALETTE_1 ;mushroom stump top
+  MTileDefine $4E, $4E, $4F, $4F, MTILE_PALETTE_1 ;mushroom stump bottom
+  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;breakable brick w/ line 
+  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;breakable brick 
+  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;breakable brick (not used)
+  MTileDefine $82, $92, $83, $93, MTILE_PALETTE_1 | MTILE_SOLID ;cracked rock terrain
+  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (power-up)
+  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (vine)
+  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (star)
+  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (coins)
+  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (1-up)
+  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (power-up)
+  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (vine)
+  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (star)
+  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (coins)
+  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (1-up)
+  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 | MTILE_SOLID ;hidden block (1 coin)
+  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 | MTILE_SOLID ;hidden block (1-up)
+  MTileDefine $80, $90, $81, $91, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;solid block (3-d block)
+  MTileDefine $B6, $B7, $B6, $B7, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;solid block (white wall)
+  MTileDefine $45, $24, $45, $24, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bridge
+  MTileDefine $86, $96, $87, $97, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bullet bill cannon barrel
+  MTileDefine $88, $98, $89, $99, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bullet bill cannon top
+  MTileDefine $94, $94, $95, $95, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bullet bill cannon bottom
+  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;blank used for jumpspring
+  MTileDefine $24, $48, $24, $48, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;half brick used for jumpspring
+  MTileDefine $8A, $9A, $8B, $9B, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;solid block (water level, green rock)
+  MTileDefine $24, $48, $24, $48, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;half brick (???)
+  MTileDefine $54, $64, $55, $65, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;water pipe top
+  MTileDefine $74, $84, $75, $85, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;water pipe bottom
+  MTileDefine $24, $5F, $24, $6F, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB ;flag ball (residual object)
 
-Palette1_MTiles_Old:
-  .byte $a2, $a2, $a3, $a3 ;vertical rope
-  .byte $99, $24, $99, $24 ;horizontal rope
-  .byte $24, $a2, $3e, $3f ;left pulley
-  .byte $5b, $5c, $24, $a3 ;right pulley
-  .byte $24, $24, $24, $24 ;blank used for balance rope
-  .byte $9d, $47, $9e, $47 ;castle top
-  .byte $47, $47, $27, $27 ;castle window left
-  .byte $47, $47, $47, $47 ;castle brick wall
-  .byte $27, $27, $47, $47 ;castle window right
-  .byte $a9, $47, $aa, $47 ;castle top w/ brick
-  .byte $9b, $27, $9c, $27 ;entrance top
-  .byte $27, $27, $27, $27 ;entrance bottom
-  .byte $52, $52, $52, $52 ;green ledge stump
-  .byte $80, $a0, $81, $a1 ;fence
-  .byte $be, $be, $bf, $bf ;tree trunk
-  .byte $75, $ba, $76, $bb ;mushroom stump top
-  .byte $ba, $ba, $bb, $bb ;mushroom stump bottom
-  .byte $45, $47, $45, $47 ;breakable brick w/ line 
-  .byte $47, $47, $47, $47 ;breakable brick 
-  .byte $45, $47, $45, $47 ;breakable brick (not used)
-CRACKED_BRICK_METATILE = $80 + (* - Palette1_MTiles_Old) / 4
-  .byte $b4, $b6, $b5, $b7 ;cracked rock terrain
-  .byte $45, $47, $45, $47 ;brick with line (power-up)
-  .byte $45, $47, $45, $47 ;brick with line (vine)
-  .byte $45, $47, $45, $47 ;brick with line (star)
-  .byte $45, $47, $45, $47 ;brick with line (coins)
-  .byte $45, $47, $45, $47 ;brick with line (1-up)
-  .byte $47, $47, $47, $47 ;brick (power-up)
-  .byte $47, $47, $47, $47 ;brick (vine)
-  .byte $47, $47, $47, $47 ;brick (star)
-  .byte $47, $47, $47, $47 ;brick (coins)
-  .byte $47, $47, $47, $47 ;brick (1-up)
-  .byte $24, $24, $24, $24 ;hidden block (1 coin)
-  .byte $24, $24, $24, $24 ;hidden block (1-up)
-  .byte $ab, $ac, $ad, $ae ;solid block (3-d block)
-  .byte $5d, $5e, $5d, $5e ;solid block (white wall)
-  .byte $c1, $24, $c1, $24 ;bridge
-  .byte $c6, $c8, $c7, $c9 ;bullet bill cannon barrel
-  .byte $ca, $cc, $cb, $cd ;bullet bill cannon top
-  .byte $2a, $2a, $40, $40 ;bullet bill cannon bottom
-  .byte $24, $24, $24, $24 ;blank used for jumpspring
-  .byte $24, $47, $24, $47 ;half brick used for jumpspring
-  .byte $82, $83, $84, $85 ;solid block (water level, green rock)
-  .byte $24, $47, $24, $47 ;half brick (???)
-  .byte $86, $8a, $87, $8b ;water pipe top
-  .byte $8e, $91, $8f, $92 ;water pipe bottom
-  .byte $24, $2f, $24, $3d ;flag ball (residual object)
+MTILE_CURRENT_INDEX .set $80
+  MTileDefine $24, $24, $24, $30, MTILE_PALETTE_2 ;cloud left
+  MTileDefine $31, $25, $32, $25, MTILE_PALETTE_2 ;cloud middle
+  MTileDefine $24, $33, $24, $24, MTILE_PALETTE_2 ;cloud right
+  MTileDefine $24, $24, $40, $24, MTILE_PALETTE_2 ;cloud bottom left
+  MTileDefine $41, $24, $42, $24, MTILE_PALETTE_2 ;cloud bottom middle
+  MTileDefine $43, $24, $24, $24, MTILE_PALETTE_2 ;cloud bottom right
+  MTileDefine $46, $26, $46, $26, MTILE_PALETTE_2 ;water/lava top
+  MTileDefine $26, $26, $26, $26, MTILE_PALETTE_2 ;water/lava
+  MTileDefine $8E, $9E, $8F, $9F, MTILE_PALETTE_2 | MTILE_SOLID | MTILE_BUMP ;cloud level terrain
+  MTileDefine $39, $49, $39, $49, MTILE_PALETTE_2 | MTILE_SOLID | MTILE_BUMP ;bowser's bridge
 
-Palette2_MTiles_Old:
-  .byte $24, $24, $24, $35 ;cloud left
-  .byte $36, $25, $37, $25 ;cloud middle
-  .byte $24, $38, $24, $24 ;cloud right
-  .byte $24, $24, $39, $24 ;cloud bottom left
-  .byte $3a, $24, $3b, $24 ;cloud bottom middle
-  .byte $3c, $24, $24, $24 ;cloud bottom right
-  .byte $41, $26, $41, $26 ;water/lava top
-  .byte $26, $26, $26, $26 ;water/lava
-CLOUD_METATILE = $80 + (* - Palette2_MTiles_Old) / 4
-  .byte $b0, $b1, $b2, $b3 ;cloud level terrain
-BRIDGE_METATILE = $80 + (* - Palette2_MTiles_Old) / 4
-  .byte $77, $79, $77, $79 ;bowser's bridge
-      
-Palette3_MTiles_Old:
-  .byte $53, $55, $54, $56 ;question block (coin)
-  .byte $53, $55, $54, $56 ;question block (power-up)
-  .byte $a5, $a7, $a6, $a8 ;coin
-  .byte $c2, $c4, $c3, $c5 ;underwater coin
-  .byte $57, $59, $58, $5a ;empty block
-  .byte $7b, $7d, $7c, $7e ;axe
+MTILE_CURRENT_INDEX .set $c0
+  MTileDefine $A8, $B8, $A9, $B9, MTILE_PALETTE_3 | MTILE_SOLID ;question block (coin)
+  MTileDefine $A8, $B8, $A9, $B9, MTILE_PALETTE_3 | MTILE_SOLID ;question block (power-up)
+  MTileDefine $AA, $BA, $AB, $BB, MTILE_PALETTE_3 | MTILE_SOLID ;coin
+  MTileDefine $AC, $BC, $AD, $BD, MTILE_PALETTE_3 | MTILE_SOLID ;underwater coin
+  MTileDefine $AE, $BE, $AF, $BF, MTILE_PALETTE_3 | MTILE_SOLID | MTILE_BUMP ;empty block
+  MTileDefine $CB, $CD, $CC, $CE, MTILE_PALETTE_3 | MTILE_SOLID | MTILE_BUMP ;axe
 
-Palette0_MTiles:
-.byte $24, $24, $24, $24 ;blank
-.byte $27, $27, $27, $27 ;black metatile
-.byte $24, $24, $24, $30 ;bush left
-.byte $31, $25, $32, $25 ;bush middle
-.byte $24, $33, $24, $24 ;bush right
-.byte $24, $34, $34, $26 ;mountain left
-.byte $26, $26, $38, $26 ;mountain left bottom/middle center
-.byte $24, $35, $24, $36 ;mountain middle top
-.byte $37, $26, $24, $37 ;mountain right
-.byte $38, $26, $26, $26 ;mountain right bottom
-.byte $26, $26, $26, $26 ;mountain middle bottom
-.byte $24, $44, $24, $44 ;bridge guardrail
-.byte $24, $CF, $CF, $24 ;chain
-.byte $3E, $4E, $3F, $4F ;tall tree top, top half
-.byte $3E, $4C, $3F, $4D ;short tree top
-.byte $4E, $4C, $4F, $4D ;tall tree top, bottom half
-.byte $50, $60, $51, $61 ;warp pipe end left, points up
-.byte $52, $62, $53, $63 ;warp pipe end right, points up
-.byte $50, $60, $51, $61 ;decoration pipe end left, points up
-.byte $52, $62, $53, $63 ;decoration pipe end right, points up
-.byte $70, $70, $71, $71 ;pipe shaft left
-.byte $26, $26, $72, $72 ;pipe shaft right
-.byte $59, $69, $5A, $6A ;tree ledge left edge
-.byte $5A, $6C, $5A, $6C ;tree ledge middle
-.byte $5A, $6A, $5B, $6B ;tree ledge right edge
-.byte $A0, $B0, $A1, $B1 ;mushroom left edge
-.byte $A2, $B2, $A3, $B3 ;mushroom middle
-.byte $A4, $B4, $A5, $B5 ;mushroom right edge
-.byte $54, $64, $55, $65 ;sideways pipe end top
-.byte $56, $66, $56, $66 ;sideways pipe shaft top
-.byte $57, $67, $71, $71 ;sideways pipe joint top
-.byte $74, $84, $75, $85 ;sideways pipe end bottom
-.byte $26, $76, $26, $76 ;sideways pipe shaft bottom
-.byte $58, $68, $71, $71 ;sideways pipe joint bottom
-.byte $8C, $9C, $8D, $9D ;seaplant
-.byte $24, $24, $24, $24 ;blank, used on bricks or blocks that are hit
-.byte $24, $5F, $24, $6F ;flagpole ball
-.byte $7D, $7D, $7E, $7E ;flagpole shaft
-.byte $24, $24, $24, $24 ;blank, used in conjunction with vines
 
-Palette1_MTiles:
-.byte $7D, $7D, $7E, $7E  ;vertical rope
-.byte $5C, $24, $5C, $24  ;horizontal rope
-.byte $24, $7D, $5D, $6D  ;left pulley
-.byte $5E, $6E, $24, $7E  ;right pulley
-.byte $24, $24, $24, $24  ;blank used for balance rope
-.byte $77, $48, $78, $48  ;castle top
-.byte $48, $48, $27, $27  ;castle window left
-.byte $48, $48, $48, $48  ;castle brick wall
-.byte $27, $27, $48, $48  ;castle window right
-.byte $79, $48, $7A, $48  ;castle top w/ brick
-.byte $7B, $27, $7C, $27  ;entrance top
-.byte $27, $27, $27, $27  ;entrance bottom
-.byte $73, $73, $73, $73  ;green ledge stump
-.byte $3A, $4A, $3B, $4B  ;fence
-.byte $3C, $3C, $3D, $3D  ;tree trunk
-.byte $A6, $4E, $A7, $4F  ;mushroom stump top
-.byte $4E, $4E, $4F, $4F  ;mushroom stump bottom
-.byte $47, $48, $47, $48  ;breakable brick w/ line 
-.byte $48, $48, $48, $48  ;breakable brick 
-.byte $47, $48, $47, $48  ;breakable brick (not used)
-.byte $82, $92, $83, $93 ;cracked rock terrain
-.byte $47, $48, $47, $48 ;brick with line (power-up)
-.byte $47, $48, $47, $48 ;brick with line (vine)
-.byte $47, $48, $47, $48 ;brick with line (star)
-.byte $47, $48, $47, $48 ;brick with line (coins)
-.byte $47, $48, $47, $48 ;brick with line (1-up)
-.byte $48, $48, $48, $48 ;brick (power-up)
-.byte $48, $48, $48, $48 ;brick (vine)
-.byte $48, $48, $48, $48 ;brick (star)
-.byte $48, $48, $48, $48 ;brick (coins)
-.byte $48, $48, $48, $48 ;brick (1-up)
-.byte $24, $24, $24, $24 ;hidden block (1 coin)
-.byte $24, $24, $24, $24 ;hidden block (1-up)
-.byte $80, $90, $81, $91 ;solid block (3-d block)
-.byte $B6, $B7, $B6, $B7 ;solid block (white wall)
-.byte $45, $24, $45, $24 ;bridge
-.byte $86, $96, $87, $97 ;bullet bill cannon barrel
-.byte $88, $98, $89, $99 ;bullet bill cannon top
-.byte $94, $94, $95, $95 ;bullet bill cannon bottom
-.byte $24, $24, $24, $24 ;blank used for jumpspring
-.byte $24, $48, $24, $48 ;half brick used for jumpspring
-.byte $8A, $9A, $8B, $9B ;solid block (water level, green rock)
-.byte $24, $48, $24, $48 ;half brick (???)
-.byte $54, $64, $55, $65 ;water pipe top
-.byte $74, $84, $75, $85 ;water pipe bottom
-.byte $24, $5F, $24, $6F ;flag ball (residual object)
+; Create the actual metatile tables.
+; TODO page align them to save a cycle someday lul
+MTileTopLeft:
+.repeat 256, I
+.if .defined(.ident(.sprintf("MTILE_TL_%d", I)))
+  .byte .ident(.sprintf("MTILE_TL_%d", I))
+.else
+  .byte $00
+.endif
+.endrepeat
 
-Palette2_MTiles:
-.byte $24, $24, $24, $30 ;cloud left
-.byte $31, $25, $32, $25 ;cloud middle
-.byte $24, $33, $24, $24 ;cloud right
-.byte $24, $24, $40, $24 ;cloud bottom left
-.byte $41, $24, $42, $24 ;cloud bottom middle
-.byte $43, $24, $24, $24 ;cloud bottom right
-.byte $46, $26, $46, $26 ;water/lava top
-.byte $26, $26, $26, $26 ;water/lava
-.byte $8E, $9E, $8F, $9F  ;cloud level terrain
-.byte $39, $49, $39, $49  ;bowser's bridge
+MTileBotLeft:
+.repeat 256, I
+.if .defined(.ident(.sprintf("MTILE_BL_%d", I)))
+  .byte .ident(.sprintf("MTILE_BL_%d", I))
+.else
+  .byte $00
+.endif
+.endrepeat
 
-Palette3_MTiles:
-.byte $A8, $B8, $A9, $B9  ;question block (coin)
-.byte $A8, $B8, $A9, $B9  ;question block (power-up)
-.byte $AA, $BA, $AB, $BB  ;coin
-.byte $AC, $BC, $AD, $BD  ;underwater coin
-.byte $AE, $BE, $AF, $BF  ;empty block
-.byte $CB, $CD, $CC, $CE  ;axe
+MTileTopRight:
+.repeat 256, I
+.if .defined(.ident(.sprintf("MTILE_TR_%d", I)))
+  .byte .ident(.sprintf("MTILE_TR_%d", I))
+.else
+  .byte $00
+.endif
+.endrepeat
+
+MTileBotRight:
+.repeat 256, I
+.if .defined(.ident(.sprintf("MTILE_BR_%d", I)))
+  .byte .ident(.sprintf("MTILE_BR_%d", I))
+.else
+  .byte $00
+.endif
+.endrepeat
+
+; THIS TABLE IS IN FIXED MEMORY since its loaded for both level loading and collision code
+.segment "FIXED"
+MTileAttribute:
+.repeat 256, I
+.if .defined(.ident(.sprintf("MTILE_AT_%d", I)))
+  .byte .ident(.sprintf("MTILE_AT_%d", I))
+.else
+  .byte $00
+.endif
+.endrepeat

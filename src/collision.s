@@ -1024,8 +1024,13 @@ HeadChk:
         ldy R4                      ;check lower nybble of vertical coordinate returned
         cpy #$04                    ;from collision detection routine
         bcc DoFootCheck             ;if low nybble < 4, branch
-          jsr CheckForSolidMTiles     ;check to see what player's head bumped on
-          bcs SolidOrClimb            ;if player collided with solid metatile, branch
+          ; Check if the player's head bumped a solid block or a climbable vine
+          tay
+          lda MTileAttribute,y
+          and #MTILE_BUMP | MTILE_CLIMB
+          bne BumpOrClimb             ;if player collided with bump metatile, branch
+          ; Player hit some other kind of block (ie: a coin block or mushroom block or other)
+          tya ; restore the metatile ID here
           ldy AreaType                ;otherwise check area type
           beq NYSpd                   ;if water level, branch ahead
           ldy BlockBounceTimer        ;if block bounce timer not expired,
@@ -1033,8 +1038,8 @@ HeadChk:
           jsr PlayerHeadCollision     ;otherwise do a sub to process collision
           jmp DoFootCheck             ;jump ahead to skip these other parts
 
-SolidOrClimb:
-  cmp #$26               ;if climbing metatile,
+BumpOrClimb:
+  and #MTILE_CLIMB
   beq NYSpd              ;branch ahead and do not play sound
     lda #Sfx_Bump
     sta Square1SoundQueue  ;otherwise load bump sound
@@ -1065,8 +1070,12 @@ AwardTouchedCoin:
   ;implicit rts
 
 ChkFootMTile:
-  jsr CheckForClimbMTiles    ;check to see if player landed on climbable metatiles
-  bcs DoPlayerSideCheck      ;if so, branch
+  ; Check if the player's foot touched a climbable
+  tay
+  lda MTileAttribute,y
+  and #MTILE_CLIMB
+  bne DoPlayerSideCheck      ;if so, branch
+    tya ; restore the metatile id to A
     ldy Player_Y_Speed         ;check player's vertical speed
     bmi DoPlayerSideCheck      ;if player moving upwards, branch
     cmp #$c5
@@ -1118,8 +1127,13 @@ SideCheckLoop:
   beq BHalf                 ;if collided with sideways pipe (top), branch ahead
   cmp #$6b
   beq BHalf                 ;if collided with water pipe (top), branch ahead
-    jsr CheckForClimbMTiles   ;do sub to see if player bumped into anything climbable
-    bcc CheckSideMTiles       ;if not, branch to alternate section of code
+    ;do sub to see if player bumped into anything climbable
+    tay
+    lda MTileAttribute,y
+    and #MTILE_CLIMB
+    bne BHalf
+    tya ; restore the metatile id
+    jmp CheckSideMTiles      ;if not, branch to alternate section of code
 BHalf:
   ldy Local_eb                   ;load block adder offset
   iny                       ;increment it
@@ -1138,10 +1152,15 @@ ExSCH:
 CheckSideMTiles:
   jsr ChkInvisibleMTiles     ;check for hidden or coin 1-up blocks
   beq ExSCH                  ;branch to leave if either found
-    jsr CheckForClimbMTiles    ;check for climbable metatiles
-    bcc ContSChk               ;if not found, skip and continue with code
+    ;check for climbable metatiles
+    tay
+    lda MTileAttribute,y
+    and #MTILE_CLIMB
+    beq ContSChk         ;if not found, skip and continue with code
+      tya
       jmp HandleClimbing         ;otherwise jump to handle climbing
 ContSChk:
+  tya ; restore the metatile id to A
   jsr CheckForCoinMTiles     ;check to see if player touched coin
   bcs HandleCoinMetatile     ;if so, execute code to erase coin and award to player 1 coin
     jsr ChkJumpspringMetatiles ;check for jumpspring metatiles
@@ -1307,21 +1326,21 @@ ExPipeE:
 
 ;--------------------------------
 
-SolidMTileUpperExt:
-  .byte $10, $61, CLOUD_METATILE, $c4
+; SolidMTileUpperExt:
+;   .byte $10, $61, CLOUD_METATILE, $c4
 
-CheckForSolidMTiles:
-  jsr GetMTileAttrib        ;find appropriate offset based on metatile's 2 MSB
-  cmp SolidMTileUpperExt,x  ;compare current metatile with solid metatiles
-  rts
+; CheckForSolidMTiles:
+;   jsr GetMTileAttrib        ;find appropriate offset based on metatile's 2 MSB
+;   cmp SolidMTileUpperExt,x  ;compare current metatile with solid metatiles
+;   rts
 
-ClimbMTileUpperExt:
-  .byte $24, $6d, BRIDGE_METATILE + 1, $c6
+; ClimbMTileUpperExt:
+;   .byte $24, $6d, BRIDGE_METATILE + 1, $c6
 
-CheckForClimbMTiles:
-  jsr GetMTileAttrib        ;find appropriate offset based on metatile's 2 MSB
-  cmp ClimbMTileUpperExt,x  ;compare current metatile with climbable metatiles
-  rts
+; CheckForClimbMTiles:
+;   jsr GetMTileAttrib        ;find appropriate offset based on metatile's 2 MSB
+;   cmp ClimbMTileUpperExt,x  ;compare current metatile with climbable metatiles
+;   rts
 
 CheckForCoinMTiles:
   cmp #$c2              ;check for regular coin
@@ -1333,18 +1352,8 @@ CheckForCoinMTiles:
 CoinSd:
   lda #Sfx_CoinGrab
   sta Square2SoundQueue ;load coin grab sound and leave
-  rts
-
-GetMTileAttrib:
-  tay            ;save metatile value into Y
-  and #%11000000 ;mask out all but 2 MSB
-  asl
-  rol            ;shift and rotate d7-d6 to d1-d0
-  rol
-  tax            ;use as offset for metatile data
-  tya            ;get original metatile value back
 ExEBG:
-  rts            ;leave
+  rts
 
 
 ;-------------------------------------------------------------------------------------
@@ -1398,7 +1407,7 @@ HandleEToBGCollision:
       bne LandEnemyProperly     ;check for blank metatile $23 and branch if not found
       ldy R2                    ;get vertical coordinate used to find block
       lda #$00                  ;store default blank metatile in that spot so we won't
-      sta (R6) ,y               ;trigger this routine accidentally again
+      sta (R6),y                ;trigger this routine accidentally again
       lda Enemy_ID,x
       cmp #$15                  ;if enemy object => $15, branch ahead
       bcs ChkToStunEnemies
