@@ -252,7 +252,11 @@ METASPRITES_COUNT .set METASPRITES_COUNT + 1
 .macro MetaspriteData Name, Left, Right
 .Local Id
 
-Id = .ident(Name)
+; Check to see if the name is already reserved. If not, add a new slot for it.
+.if .not(.defined( .ident( .sprintf("METASPRITE_%s", Name) ) ))
+  MetaspriteReserve Name
+.endif
+Id = .ident( .sprintf("METASPRITE_%s", Name) )
 
 .ident( .sprintf("METASPRITE_LEFT_%d_LO",  Id) ) = .lobyte(Left)
 .ident( .sprintf("METASPRITE_LEFT_%d_HI",  Id) ) = .hibyte(Left)
