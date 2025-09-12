@@ -1,6 +1,6 @@
 ;======================================================================================================================
-; FAMISTUDIO SOUND ENGINE (4.3.0)
-; Copyright (c) 2019-2024 Mathieu Gauthier
+; FAMISTUDIO SOUND ENGINE (4.4.1)
+; Copyright (c) 2019-2025 Mathieu Gauthier
 ;
 ; Copying and distribution of this file, with or without
 ; modification, are permitted in any medium without royalty provided
@@ -143,20 +143,17 @@
 FAMISTUDIO_CFG_NTSC_SUPPORT  = 1
 
 ; Support for sound effects playback + number of SFX that can play at once.
-; FAMISTUDIO_CFG_SFX_SUPPORT   = 1 
+; FAMISTUDIO_CFG_SFX_SUPPORT   = 1
 ; FAMISTUDIO_CFG_SFX_STREAMS   = 2
 
 ; Blaarg's smooth vibrato technique. Eliminates phase resets ("pops") on square channels. 
-; FAMISTUDIO_CFG_SMOOTH_VIBRATO = 1 
+; FAMISTUDIO_CFG_SMOOTH_VIBRATO = 1
 
 ; Enables DPCM playback support.
 FAMISTUDIO_CFG_DPCM_SUPPORT   = 1
 
 ; Must be enabled if you are calling sound effects from a different thread than the sound engine update.
-; FAMISTUDIO_CFG_THREAD         = 1     
-
-; Enable to use the CC65 compatible entrypoints via the provided header file
-; FAMISTUDIO_CFG_C_BINDINGS   = 1
+; FAMISTUDIO_CFG_THREAD         = 1
 
 ;======================================================================================================================
 ; 4) SUPPORTED FEATURES CONFIGURATION
@@ -353,10 +350,6 @@ FAMISTUDIO_USE_ARPEGGIO          = 1
     FAMISTUDIO_CFG_SFX_STREAMS = 1
 .endif
 
-.ifndef FAMISTUDIO_CFG_C_BINDINGS
-    FAMISTUDIO_CFG_C_BINDINGS = 0
-.endif
-
 .ifndef FAMISTUDIO_CFG_SMOOTH_VIBRATO
     FAMISTUDIO_CFG_SMOOTH_VIBRATO = 0
 .endif
@@ -527,7 +520,7 @@ FAMISTUDIO_DPCM_PTR = (FAMISTUDIO_DPCM_OFF & $3fff) >> 6
     FAMISTUDIO_NUM_DUTY_CYCLES      = 3
 .endif
 .if FAMISTUDIO_EXP_FDS
-    FAMISTUDIO_NUM_ENVELOPES        = 3+3+2+3+2
+    FAMISTUDIO_NUM_ENVELOPES        = 3+3+2+3+3
     FAMISTUDIO_NUM_PITCH_ENVELOPES  = 4
     FAMISTUDIO_NUM_CHANNELS         = 6
     FAMISTUDIO_NUM_DUTY_CYCLES      = 3   
@@ -688,6 +681,7 @@ FAMISTUDIO_ENV_VOLUME_OFF        = 0
 FAMISTUDIO_ENV_NOTE_OFF          = 1
 FAMISTUDIO_ENV_DUTY_OFF          = 2
 FAMISTUDIO_ENV_N163_WAVE_IDX_OFF = 2
+FAMISTUDIO_ENV_FDS_WAVE_IDX_OFF  = 2
 FAMISTUDIO_ENV_MIXER_IDX_OFF     = 2
 FAMISTUDIO_ENV_NOISE_IDX_OFF     = 3
 
@@ -917,6 +911,9 @@ famistudio_epsm_chn_env_shape:     .res FAMISTUDIO_EXP_EPSM_SSG_CHN_CNT ; bit 7 
 famistudio_epsm_chn_env_octave:    .res FAMISTUDIO_EXP_EPSM_SSG_CHN_CNT
 .endif
 .endif
+.if FAMISTUDIO_EXP_FDS
+famistudio_chn_fds_instrument:    .res 1
+.endif
 .if FAMISTUDIO_EXP_N163
 famistudio_chn_n163_instrument:   .res FAMISTUDIO_EXP_N163_CHN_CNT
 famistudio_chn_n163_wave_index:   .res FAMISTUDIO_EXP_N163_CHN_CNT
@@ -968,11 +965,13 @@ famistudio_mmc5_pulse2_prev:      .res 1
 .endif
 
 .if FAMISTUDIO_EXP_FDS
+famistudio_fds_mod_envelope:      .res 2
 famistudio_fds_mod_speed:         .res 2
 famistudio_fds_mod_depth:         .res 1
 famistudio_fds_mod_delay:         .res 1
 famistudio_fds_mod_delay_counter: .res 1
 famistudio_fds_override_flags:    .res 1 ; Bit 7 = mod speed overriden, bit 6 mod depth overriden
+famistudio_fds_wave_index:        .res 1
 .if FAMISTUDIO_USE_FDS_AUTOMOD
 famistudio_fds_automod_numer:     .res 1 ; 0 = auto-mod off.
 famistudio_fds_automod_denom:     .res 1
@@ -1221,7 +1220,7 @@ FAMISTUDIO_N163_REG_WAVE      = $7e
 FAMISTUDIO_N163_REG_VOLUME    = $7f
 
 FAMISTUDIO_S5B_ADDR       = $c000
-FAMISTUDIO_S5B_DATA       = $e001 ; To avoid VRC7 conflict.
+FAMISTUDIO_S5B_DATA       = $e000
 FAMISTUDIO_S5B_REG_LO_A   = $00
 FAMISTUDIO_S5B_REG_HI_A   = $01
 FAMISTUDIO_S5B_REG_LO_B   = $02
@@ -1725,12 +1724,15 @@ famistudio_music_play:
 
 .if FAMISTUDIO_EXP_FDS
     lda #0
+    sta famistudio_fds_mod_envelope+0
+    sta famistudio_fds_mod_envelope+1
     sta famistudio_fds_mod_speed+0
     sta famistudio_fds_mod_speed+1
     sta famistudio_fds_mod_depth
     sta famistudio_fds_mod_delay
     sta famistudio_fds_mod_delay_counter
     sta famistudio_fds_override_flags
+    sta famistudio_fds_wave_index
     .if FAMISTUDIO_USE_FDS_AUTOMOD    
         sta famistudio_fds_automod_numer
         sta famistudio_fds_automod_denom
@@ -2292,9 +2294,19 @@ famistudio_update_fds_channel_sound:
 
     lda famistudio_chn_note+FAMISTUDIO_FDS_CH0_IDX
     bne @nocut
+    lda #0 
+    sta FAMISTUDIO_FDS_MOD_LO
+    sta FAMISTUDIO_FDS_SWEEP_BIAS
+    lda #$80
+    sta FAMISTUDIO_FDS_MOD_HI
+    sta FAMISTUDIO_FDS_SWEEP_ENV
     jmp @set_volume
 
 @nocut:
+ 
+    jsr famistudio_update_fds_wave
+
+    lda famistudio_chn_note+FAMISTUDIO_FDS_CH0_IDX
     clc
     adc famistudio_env_value+FAMISTUDIO_FDS_CH0_ENVS+FAMISTUDIO_ENV_NOTE_OFF
     .if FAMISTUDIO_DUAL_SUPPORT
@@ -2317,9 +2329,13 @@ famistudio_update_fds_channel_sound:
 @check_mod_delay:
     lda famistudio_fds_mod_delay_counter
     beq @zero_delay
-    dec famistudio_fds_mod_delay_counter
+    lda #0
+    sta FAMISTUDIO_FDS_MOD_LO
+    sta FAMISTUDIO_FDS_SWEEP_BIAS
     lda #$80
     sta FAMISTUDIO_FDS_MOD_HI
+    sta FAMISTUDIO_FDS_SWEEP_ENV
+    dec famistudio_fds_mod_delay_counter
     bne @compute_volume
 
 @zero_delay:
@@ -4255,6 +4271,7 @@ famistudio_update:
 
 ;----------------------------------------------------------------------------------------------------------------------
 @update_sound:
+
     famistudio_update_channel_sound 0, FAMISTUDIO_CH0_ENVS, famistudio_pulse1_prev, FAMISTUDIO_ALIAS_PL1_HI, FAMISTUDIO_ALIAS_PL1_LO, FAMISTUDIO_ALIAS_PL1_VOL, FAMISTUDIO_APU_PL1_SWEEP
     famistudio_update_channel_sound 1, FAMISTUDIO_CH1_ENVS, famistudio_pulse2_prev, FAMISTUDIO_ALIAS_PL2_HI, FAMISTUDIO_ALIAS_PL2_LO, FAMISTUDIO_ALIAS_PL2_VOL, FAMISTUDIO_APU_PL2_SWEEP
     famistudio_update_channel_sound 2, FAMISTUDIO_CH2_ENVS, , FAMISTUDIO_ALIAS_TRI_HI, FAMISTUDIO_ALIAS_TRI_LO, FAMISTUDIO_ALIAS_TRI_LINEAR
@@ -4367,8 +4384,7 @@ famistudio_update:
 
 ;----------------------------------------------------------------------------------------------------------------------
 .if FAMISTUDIO_CFG_SFX_SUPPORT
-
-;smbstudio: Bank switch to the sfx bank first
+    ;smbstudio: Bank switch to the sfx bank first
     BankPRGA #.bank(sfx_data) | BANK_ADJUST
 
     ; Process all sound effect streams
@@ -4579,6 +4595,7 @@ famistudio_do_s5b_note_attack:
 famistudio_do_fds_note_attack:
 
     @chan_idx = famistudio_r0
+    @tmp_y    = famistudio_r1
 
     ; TODO : We used to set the modulation value here, but that's bad.
     ; https://www.nesdev.org/wiki/FDS_audio#Mod_frequency_high_($4087)
@@ -4589,7 +4606,20 @@ famistudio_do_fds_note_attack:
 
     lda famistudio_fds_mod_delay
     sta famistudio_fds_mod_delay_counter
+
+    sty @tmp_y
+    ldy @chan_idx
+    ldx famistudio_channel_env,y
+    lda #0
+    sta famistudio_env_repeat+FAMISTUDIO_ENV_FDS_WAVE_IDX_OFF,x
+    lda #1 ; Index 0 is release point, so envelope starts at 1.
+    sta famistudio_env_ptr+FAMISTUDIO_ENV_FDS_WAVE_IDX_OFF,x
+
+    ; Clear wave index to -1 to force reload.
     ldx @chan_idx
+    lda #$ff
+    sta famistudio_fds_wave_index
+    ldy @tmp_y
     rts
 
 .endif
@@ -5201,6 +5231,73 @@ famistudio_set_epsm_instrument:
 .if FAMISTUDIO_EXP_FDS
 
 ;======================================================================================================================
+; FAMISTUDIO_UPDATE_FDS_WAVE (internal)
+;
+; Internal function to upload the FDS waveform (if needed) of an FDS instrument. 
+;======================================================================================================================
+
+famistudio_update_fds_wave:
+
+    @ptr        = famistudio_ptr1
+    @wave_ptr   = famistudio_ptr0
+    @tmp_enable = famistudio_r3
+
+    ; See if the wave index has changed.
+    lda famistudio_env_value+FAMISTUDIO_FDS_CH0_ENVS+FAMISTUDIO_ENV_FDS_WAVE_IDX_OFF
+    cmp famistudio_fds_wave_index
+    beq @done
+
+    ; Retrieve the instrument pointer.
+    sta famistudio_fds_wave_index
+    lda famistudio_chn_fds_instrument
+    jsr famistudio_get_exp_inst_ptr
+
+    ; Master volume
+    tya
+    adc #8 ; Carry is clear here.
+    tay
+    lda (@ptr),y
+    and #3 ; Bits 0 and 1 are master volume
+    tax    ; Store master volume to x
+    ora #$80
+    sta @tmp_enable ; Store maaster volume with write enable
+    iny
+    
+    ; Load the wave table pointer.
+    lda (@ptr),y
+    sta @wave_ptr+0
+    iny
+    lda (@ptr),y
+    sta @wave_ptr+1
+
+    ; Load the pointer for the current wave in the table.
+    lda famistudio_fds_wave_index
+    asl
+    tay
+    lda (@wave_ptr),y
+    sta @ptr+0
+    iny
+    lda (@wave_ptr),y
+    sta @ptr+1
+
+    ; FDS Waveform
+    ldy #63
+    @wave_loop:
+        lda @tmp_enable
+        sta FAMISTUDIO_FDS_VOL ; Enable RAM write.
+        lda (@ptr),y 
+        sta FAMISTUDIO_FDS_WAV_START,y ; Write 2 samples between each write toggle (saves ~500 CPU cycles, sounds identical)
+        dey
+        lda (@ptr),y 
+        sta FAMISTUDIO_FDS_WAV_START,y
+        stx FAMISTUDIO_FDS_VOL ; Disable RAM write.
+        dey
+        bpl @wave_loop
+        
+    @done:
+    rts
+    
+;======================================================================================================================
 ; FAMISTUDIO_SET_FDS_INSTRUMENT (internal)
 ;
 ; Internal function to set a FDS instrument. Will upload the wave and modulation envelope if needed.
@@ -5212,84 +5309,89 @@ famistudio_set_epsm_instrument:
 
 famistudio_set_fds_instrument:
 
-    @ptr          = famistudio_ptr1
-    @wave_ptr     = famistudio_ptr2
-    @tmp_y        = famistudio_r3 
+    @ptr           = famistudio_ptr1
+    @wave_ptr      = famistudio_ptr2
+    @tmp_mod_depth = famistudio_r3
 
+    ; Store instrument number (premultipled by 4 if not using extended range)
+    sta famistudio_chn_fds_instrument-FAMISTUDIO_FDS_CH0_IDX,y
+    
     jsr famistudio_get_exp_inst_ptr
     jsr famistudio_load_basic_envelopes
 
-    @write_fds_wave:
+    ; Load the wave index envelope, x will point to the correct envelope.
+    lda (@ptr),y
+    sta famistudio_env_addr_lo,x
+    iny
+    lda (@ptr),y
+    sta famistudio_env_addr_hi,x
 
-        ora #$80
-        sta FAMISTUDIO_FDS_VOL ; Enable wave RAM write
+    ; FDS Modulation
+    @write_fds_mod:        
+        iny
+        lda (@ptr),y ; Read depth / master volume, shift twice for depth and store for later.
+        lsr
+        lsr
+        sta @tmp_mod_depth
 
-        ; FDS Waveform
+        ; Skip to mod envelope
+        iny
+        iny
+        iny
+
+        ; Compare mod envelope pointer, only write the mod table if it has changed
         lda (@ptr),y
-        sta @wave_ptr+0
+        cmp famistudio_fds_mod_envelope+0
+        bne @write_mod_table
         iny
         lda (@ptr),y
-        sta @wave_ptr+1
-        iny
-        sty @tmp_y
+        cmp famistudio_fds_mod_envelope+1
+        beq @load_mod_param ; Skip writing the mod table
+        dey
+        lda (@ptr),y
 
-        ldy #0
-        @wave_loop:
-            lda (@wave_ptr),y
-            sta FAMISTUDIO_FDS_WAV_START,y
+        @write_mod_table:
+            ; Store new envelope pointer
+            sta @wave_ptr+0
+            sta famistudio_fds_mod_envelope+0
             iny
-            cpy #64
-            bne @wave_loop
+            lda (@ptr),y
+            sta @wave_ptr+1
+            sta famistudio_fds_mod_envelope+1
 
-        ldy @tmp_y
-        lda #$80
-        sta FAMISTUDIO_FDS_MOD_HI ; Need to disable modulation before writing.
-        lda (@ptr),y ; Read master volume
-        sta FAMISTUDIO_FDS_VOL ; Disable RAM write.
-        lda #0
-        sta FAMISTUDIO_FDS_SWEEP_BIAS
-        iny
-
-        ; FDS Modulation
-        lda (@ptr),y
-        sta @wave_ptr+0
-        iny
-        lda (@ptr),y
-        sta @wave_ptr+1
-        iny
-        sty @tmp_y
-
-        ldy #0
-        @mod_loop:
-            lda (@wave_ptr),y
-            sta FAMISTUDIO_FDS_MOD_TABLE
-            iny
-            cpy #32
-            bne @mod_loop
-
-        ldy @tmp_y
+            ; Reset and write modulation
+            tya ; Store y in x and restore after loop
+            tax
+            lda #$80
+            sta FAMISTUDIO_FDS_MOD_HI ; Need to disable modulation before writing.
+            sta FAMISTUDIO_FDS_SWEEP_ENV
+            ldy #0
+            sty FAMISTUDIO_FDS_SWEEP_BIAS
+            @mod_loop:
+                lda (@wave_ptr),y
+                sta FAMISTUDIO_FDS_MOD_TABLE
+                iny
+                cpy #32
+                bne @mod_loop
+            txa
+            tay
 
     @load_mod_param:
-
-    .if FAMISTUDIO_USE_FDS_AUTOMOD
-        lda (@ptr),y
-        beq @check_mod_speed
-
-        @auto_mod:
-            iny
-            lda (@ptr),y
-            sta famistudio_fds_automod_numer
-            iny
-            lda (@ptr),y
-            sta famistudio_fds_automod_denom
-            bne @check_mod_depth
-    .else
         iny
-        iny
-    .endif
+        .if FAMISTUDIO_USE_FDS_AUTOMOD
+            lda (@ptr),y
+            bpl @check_mod_speed ; Skip auto mod if bit 7 is clear
+
+            @auto_mod:
+                and #$7f ; Clear bit 7 before setting
+                sta famistudio_fds_automod_numer
+                iny
+                lda (@ptr),y
+                sta famistudio_fds_automod_denom
+                bne @check_mod_depth
+        .endif
 
         @check_mod_speed:
-            iny
             .if FAMISTUDIO_USE_FDS_AUTOMOD
                 lda #0
                 sta famistudio_fds_automod_numer
@@ -5309,13 +5411,16 @@ famistudio_set_fds_instrument:
                 iny
 
         @check_mod_depth:
-            iny
             bit famistudio_fds_override_flags
             bvs @mod_depth_overriden
 
             @load_mod_depth:
-                lda (@ptr),y
+                tya ; Use depth that was stored earlier
+                tax
+                lda @tmp_mod_depth 
                 sta famistudio_fds_mod_depth
+                txa
+                tay
 
             @mod_depth_overriden:
                 iny
@@ -5729,7 +5834,10 @@ famistudio_advance_channel:
 
 .if FAMISTUDIO_EXP_FDS
 @opcode_fds_release_note:
-    ldx #FAMISTUDIO_FDS_CH0_ENVS
+    lda famistudio_channel_env,x 
+    tax
+    inx ; +2 for FAMISTUDIO_ENV_FDS_WAVE_IDX_OFF.
+    inx
     jsr @jump_to_release_envelope
 .endif
 
@@ -7445,63 +7553,17 @@ famistudio_rhythm_lut:
     .byte $ff
 .endif
 .endif
-; ======================================================================================================================
-; Alternative entry points for calling from c code
-;
-; Notes: the C function definitions use __fastcall__ meaning they will put the
-; last parameter in a register before the call according to the rules laid out
-; in the documentation here: https://cc65.github.io/doc/cc65-intern.html
-; and here: https://github.com/cc65/wiki/wiki/Parameter-passing-and-calling-conventions
-; and here: https://github.com/cc65/wiki/wiki/Parameter-and-return-stacks
-; ======================================================================================================================
-.if FAMISTUDIO_CFG_C_BINDINGS
 
-; Required to fetch the extra parameter from the C stack
-.import popa
-
-.export _famistudio_init
-_famistudio_init:
-    ; A = ptr[lo]; X = ptr[hi]; SP[0] = platform
-    @tmp = famistudio_r0
-    stx @tmp
-    tax
-    ; Note that the C stack 'popa' function uses Y as scratch
-    jsr popa
-    ldy @tmp
-    jmp famistudio_init
-
-
-; A = song_index; So we can safely re-export the symbol
-.export _famistudio_music_play=famistudio_music_play
-; A = mode; safe to re-export the symbol as well
-.export _famistudio_music_pause=famistudio_music_pause
-
-; No parameters so its safe to re-export
-.export _famistudio_music_stop=famistudio_music_stop
-.export _famistudio_update=famistudio_update
-
+; Re-export C friendly names of the functions for cc65 and llvm-mos (which can link against ca65 libraries)
+.export _famistudio_init            := famistudio_init
+.export _famistudio_music_play      := famistudio_music_play
+.export _famistudio_music_pause     := famistudio_music_pause
+.export _famistudio_music_stop      := famistudio_music_stop
+.export _famistudio_update          := famistudio_update
 .if FAMISTUDIO_CFG_SFX_SUPPORT
-
-.export _famistudio_sfx_init
-.export _famistudio_sfx_play
-.export _famistudio_sfx_sample_play
-
-_famistudio_sfx_init:
-    ; A = ptr[lo]; X = ptr[hi]
-    @tmp = famistudio_r0
-    stx @tmp
-    ldy @tmp
-    tax
-    jmp famistudio_sfx_init
-
-_famistudio_sfx_play:
-    ; A = offset; SP[0] = index
-    tax
-    jsr popa
-    jmp famistudio_sfx_play
-
-; A = sample_index; So we can safely re-export the symbol
-.export _famistudio_sfx_sample_play=famistudio_sfx_sample_play
-
+.export _famistudio_sfx_init        := famistudio_sfx_init
+.export _famistudio_sfx_play        := famistudio_sfx_play
+.if FAMISTUDIO_CFG_DPCM_SUPPORT
+.export _famistudio_sfx_sample_play := famistudio_sfx_sample_play
 .endif
 .endif
