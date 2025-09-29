@@ -114,6 +114,13 @@ ColdBoot:
     inx
     inx
     bne :-
+  ; Work around MMC5 issue. Changing from 8x8 to 8x16 mode causes the "last CHR register"
+  ; to reset for some reason, which causes errant pixels in the corner
+  ; So before INITing the mapper, just turn on 8x16 mode
+  lda Mirror_PPUCTRL
+  ora #%00100000               ;enable 8x16 sprites
+  sta PPUCTRL              ;write contents of A to PPU register 1
+  sta Mirror_PPUCTRL       ;and its mirror
   ; do mapper specific init
   jsr MapperInit
 FinializeMarioInit:
