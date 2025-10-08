@@ -512,6 +512,9 @@ endcproc
 
 GameText:
 TopStatusBarLine:
+; jroweboy: moved the attribute writes first which fixes a glitchy transition between levels.
+; if the last byte written in nmi is in the attribute tables, it affects the scroll for the
+; next frame, so this works around it by making sure attributes aren't last.
   .byte $23, $c0, $7f, $aa ; attribute table data, clears name table 0 to palette 2
   .byte $23, $c2, $01, $ea ; attribute table data, used for coin icon in status bar
   .byte $20, $43, $05, "MARIO"
@@ -528,12 +531,17 @@ WorldLivesDisplay:
   .byte $ff
 
 TwoPlayerTimeUp:
+; jroweboy since we reordered the attribute writes to fix a glitchy transition
+; we need to pad out the time up and game over messages to use the same offset
+; for "MARIO" so the two player write text will write over the correct location.
+  .byte $21, $cd, $05, "     "
   .byte $21, $cd, $05, "MARIO"
 OnePlayerTimeUp:
   .byte $22, $0c, $07, "TIME UP"
   .byte $ff
 
 TwoPlayerGameOver:
+  .byte $21, $cd, $05, "     "
   .byte $21, $cd, $05, "MARIO"
 OnePlayerGameOver:
   .byte $22, $0b, $09, "GAME OVER"
