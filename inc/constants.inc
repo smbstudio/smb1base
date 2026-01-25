@@ -67,15 +67,15 @@ Sfx_BowserFlame       = %00000010
 Sfx_BrickShatter      = %00000001
 
 ;music constants
-Silence               = %10000000
-
-StarPowerMusic        = %01000000
-PipeIntroMusic        = %00100000
-CloudMusic            = %00010000
-CastleMusic           = %00001000
-UndergroundMusic      = %00000100
-WaterMusic            = %00000010
-GroundMusic           = %00000001
+; jroweboy: replaced the bit fields with numeric fields since it lets you expand the music table easier.
+GroundMusic           = $00 ; : Overworld
+UndergroundMusic      = $01 ; : Underworld
+WaterMusic            = $02 ; : Waterworld
+CastleMusic           = $03 ; : Castleworld
+CloudMusic            = $04 ; : Cloud
+PipeIntroMusic        = $05 ; : Enter in a pipe
+StarPowerMusic        = $06 ; : Starman
+Silence               = $07 ; Silence
 
 TimeRunningOutMusic   = %01000000
 EndOfLevelMusic       = %00100000

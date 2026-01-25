@@ -50,7 +50,8 @@ SilenceTrack = -1
 
 
 AreaMusicLUT:
-  .byte SilenceTrack, Starman, EnterPipe, Cloud, Castleworld, Underworld, Waterworld, Overworld
+  .byte Overworld, Underworld, Waterworld, Castleworld, Cloud, EnterPipe, Starman, SilenceTrack
+
 EventMusicLUT:
   .byte SilenceTrack, HurryUp, Victory, Waterworld, InAnotherCastle, SavedPrincess, GameOver, Death
 
@@ -158,8 +159,8 @@ NotTRO:
       sta AreaMusicQueue
       stx AreaMusicBuffer
 FindAreaMusic:
-      jsr FindMostSigBit
-      lda AreaMusicLUT, y
+      ; jsr FindMostSigBit
+      lda AreaMusicLUT, x
 SkipAreaProcessing:
     ldx EventMusicQueue
     beq PlayNewSong
