@@ -512,6 +512,11 @@ DrawSprite:
         ; subtracting a small negative offset here
         ora #%11000000
         clc
+        adc SprObject_Y_Position,y
+        ; adding a negative number means if carry is clear, then "wrapped"
+        bcs SetYOffset
+          dec Yhi
+          bcc SetYOffset ; unconditional
     PositiveYOffset:
       adc SprObject_Y_Position,y
       bcc SetYOffset
