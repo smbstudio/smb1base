@@ -642,6 +642,7 @@ BridgeCollapse:
   cmp #$e0                  ;if bowser not yet low enough, skip this part ahead
   bcc MoveD_Bowser
 SetM2:
+  SwapCastleEndCHR          ;bowser is gone, so swap in the toad/peach page
   lda #Silence              ;silence music
   sta EventMusicQueue
   inc OperMode_Task         ;move onto next secondary mode in autoctrl mode

@@ -51,8 +51,8 @@
 ;             In general, the sprite bank windows are as follows:
 ;               0   - Mario
 ;               1   - Misc sprites (like powerups and coins)
-;               2-3 - Enemy Sprites (Banked by area type on MMC3)
-;               4-7 - MMC5 ONLY! Expanded sprite window to allow more sprites
+;               2-3 - Enemy Sprites (Banked by area type. Castles use CHR_SPR_CASTLE)
+;               4-7 - MMC5 ONLY! Don't use these for anything that needs to work on MMC3
 ;     BANK - number - Bank number for the actual ROM bank used
 ;     PALETTE - number - Base palette for the metasprite
 ;     X_OFFSET - number - Number of pixels to offset the entire metasprite from the origin
@@ -342,9 +342,10 @@ BULLET_VRAM_OFFSET = SPRITE_BANK_2
 BULLET_PALETTE = $03
 MetaspriteBox "BULLET", "BILL", $1c, $1e
 
-PODOBOO_VRAM_OFFSET = SPRITE_BANK_4
+; Bowser, bowser flame, podoboo, peach and toad only exist in the castle enemy pages (CHR_SPR_CASTLE)
+PODOBOO_VRAM_OFFSET = SPRITE_BANK_2
 PODOBOO_PALETTE = $02
-MetaspriteBox "PODOBOO", "UP", $18, $18 | SPR_FLIP_H
+MetaspriteBox "PODOBOO", "UP", $3e, $3e | SPR_FLIP_H
 
 
 BUZZY_BEETLE_VRAM_OFFSET = SPRITE_BANK_2
@@ -412,24 +413,25 @@ MetaspriteBox "JUMPSPRING", "FRAME_1", $16, $16 | SPR_FLIP_H , $36, $36 | SPR_FL
 MetaspriteBox "JUMPSPRING", "FRAME_2", $38, $38 | SPR_FLIP_H
 MetaspriteBox "JUMPSPRING", "FRAME_3", $14, $14
 
-BOWSER_VRAM_OFFSET = SPRITE_BANK_4
+BOWSER_VRAM_OFFSET = SPRITE_BANK_3
 BOWSER_PALETTE = $01
 BOWSER_Y_OFFSET = -8
-MetaspriteBox "BOWSER", "FRONT_MOUTH_OPEN", $08, $0a, $28
-MetaspriteBox "BOWSER", "FRONT_MOUTH_CLOSED", $0c, $0e, $28
-MetaspriteBox "BOWSER", "REAR_WALK_1", $04, $06, $20, $22
-MetaspriteBox "BOWSER", "REAR_WALK_2", $04, $06, $24, $26
+MetaspriteBox "BOWSER", "FRONT_MOUTH_OPEN", $14, $16, $38
+MetaspriteBox "BOWSER", "FRONT_MOUTH_CLOSED", $28, $2a, $38
+MetaspriteBox "BOWSER", "REAR_WALK_1", $0c, $0e, $2c, $2e
+MetaspriteBox "BOWSER", "REAR_WALK_2", $0c, $0e, $30, $36
 
 MetaspriteReserve "BOWSER_FLAME"
 
-PEACH_VRAM_OFFSET = SPRITE_BANK_4
+; Peach and toad are only in CHR_SPR_CASTLE_END, which is swapped in after bowser dies
+PEACH_VRAM_OFFSET = SPRITE_BANK_3
 PEACH_PALETTE = $02
 PEACH_Y_OFFSET = -8
-MetaspriteBox "PEACH", "STANDING", $14, $16, $34, $34 | SPR_FLIP_H
-TOAD_VRAM_OFFSET = SPRITE_BANK_4
+MetaspriteBox "PEACH", "STANDING", $28, $2a, $36, $36 | SPR_FLIP_H
+TOAD_VRAM_OFFSET = SPRITE_BANK_3
 TOAD_PALETTE = $02
 TOAD_Y_OFFSET = -8
-MetaspriteBox "TOAD", "STANDING", $10, $10 | SPR_FLIP_H, $12, $12 | SPR_FLIP_H
+MetaspriteBox "TOAD", "STANDING", $14, $14 | SPR_FLIP_H, $16, $16 | SPR_FLIP_H
 
 .if ::MOUSE_DISPLAY_CURSOR
 MOUSE_VRAM_OFFSET = SPRITE_BANK_5
@@ -552,9 +554,9 @@ PALETTE  .set 2
 MetaspriteData "BOWSER_FLAME", MetaspriteBowserFlame, MetaspriteBowserFlame
 MetaspriteBowserFlame:
   .byte 3 * 4
-  .byte  MetaspriteVramOffset{$2d}, {SPRITE_BANK_4}, PALETTE,   0 + Y_OFFSET,  0 + X_OFFSET
-  .byte  MetaspriteVramOffset{$2f}, {SPRITE_BANK_4}, PALETTE,   0 + Y_OFFSET,  8 + X_OFFSET
-  .byte  MetaspriteVramOffset{$31}, {SPRITE_BANK_4}, PALETTE,   0 + Y_OFFSET, 16 + X_OFFSET
+  .byte  MetaspriteVramOffset{$1c}, {SPRITE_BANK_2}, PALETTE,   0 + Y_OFFSET,  0 + X_OFFSET
+  .byte  MetaspriteVramOffset{$1e}, {SPRITE_BANK_2}, PALETTE,   0 + Y_OFFSET,  8 + X_OFFSET
+  .byte  MetaspriteVramOffset{$3c}, {SPRITE_BANK_2}, PALETTE,   0 + Y_OFFSET, 16 + X_OFFSET
 
 
 

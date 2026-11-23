@@ -166,20 +166,20 @@ MMC5_CHR_BG_BANK_0C = MMC5_CHR_BANK_BASE + 11
     inx
   .endif
   .endrepeat
-    ldx #CHR_MISC
-  .repeat 7,I
-    stx CurrentCHRBank + I + 1
-  .if I <> 6
-    inx
-  .endif
-  .endrepeat
-    inc ReloadCHRBank
   :
+  ; Always reset the enemy pages, since SwapCastleEndCHR changes them when bowser dies
+  ldx AreaTypeEnemyBankMap,y
+  stx EnemyChrBank+0
+  inx
+  stx EnemyChrBank+1
+  inc ReloadCHRBank
   lda AreaType
   rts
 
 AreaTypeBankMap:
   .byte CHR_BG_WATER, CHR_BG_GROUND, CHR_BG_UNDERGROUND, CHR_BG_CASTLE
+AreaTypeEnemyBankMap:
+  .byte CHR_SPR_ENEMY, CHR_SPR_ENEMY, CHR_SPR_ENEMY, CHR_SPR_CASTLE
 .endmacro
 
 .segment "FIXED"
@@ -234,8 +234,9 @@ MapperInit:
   rts
 CHRBankInitValues:
 ; SPR bank init values
-  .byte CHR_SMALLMARIO, CHR_MISC, CHR_SPRITES, CHR_SPRITES+1
-  .byte CHR_SPRITES+2, CHR_SPRITES+3, CHR_SPRITES+4, CHR_SPRITES+5
+; Slots 4-7 are MMC5 only (SPRITE_BANK_4 - SPRITE_BANK_7). Anything drawn from them won't work on MMC3
+  .byte CHR_SMALLMARIO, CHR_MISC, CHR_SPR_ENEMY, CHR_SPR_ENEMY+1
+  .byte CHR_SPR_EXTRA, CHR_SPR_MOUSE, CHR_SPR_CASTLE, CHR_SPR_CASTLE+1
 
 ; BG bank init values
   .byte CHR_BG_GROUND, CHR_BG_GROUND+1, CHR_BG_GROUND+2, CHR_BG_GROUND+3

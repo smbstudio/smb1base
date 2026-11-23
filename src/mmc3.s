@@ -114,19 +114,19 @@ IRQENABLE   = $e001
     inx
     inx
     stx AreaChrBank+1
-    ; Reset the enemy chr banks too cause why not.
-    ldx AreaTypeEnemyBankMap,y
-    stx EnemyChrBank+0
-    inx
-    stx EnemyChrBank+1
-    inc ReloadCHRBank
   :
+  ; Always reset the enemy pages, since SwapCastleEndCHR changes them when bowser dies
+  ldx AreaTypeEnemyBankMap,y
+  stx EnemyChrBank+0
+  inx
+  stx EnemyChrBank+1
+  inc ReloadCHRBank
   lda AreaType
   rts
 AreaTypeBankMap:
   .byte CHR_BG_WATER, CHR_BG_GROUND, CHR_BG_UNDERGROUND, CHR_BG_CASTLE
 AreaTypeEnemyBankMap:
-  .byte CHR_SPR_WATER, CHR_SPR_GROUND, CHR_SPR_UNDERGROUND, CHR_SPR_CASTLE
+  .byte CHR_SPR_ENEMY, CHR_SPR_ENEMY, CHR_SPR_ENEMY, CHR_SPR_CASTLE
 
 .endmacro
 
@@ -205,7 +205,7 @@ AreaTypeEnemyBankMap:
 
 
 BankInitValues:
-  .byte CHR_BG_GROUND, CHR_BG_GROUND+2, CHR_SMALLMARIO, CHR_MISC, CHR_SPR_GROUND, CHR_SPR_GROUND+1
+  .byte CHR_BG_GROUND, CHR_BG_GROUND+2, CHR_SMALLMARIO, CHR_MISC, CHR_SPR_ENEMY, CHR_SPR_ENEMY+1
 
 MapperInit:
   ldx #5
@@ -221,6 +221,8 @@ MapperInit:
 
   ; Now set the initial A bank
   BankPRGA #.bank(PLAYER)
+  ; The custom audio driver runs from the $C000 bank, so it must start on a DPCM bank
+  BankPRGC #.bank(DPCM_BANK0)
   lda #.bank(PLAYER)
   sta CurrentBank
   lda #0
