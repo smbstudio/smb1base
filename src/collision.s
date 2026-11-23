@@ -763,24 +763,11 @@ BowserIdentities:
   .byte Goomba
   .byte GreenKoopa
   .byte BuzzyBeetle
-  ; These two aren't available in the bank, so just change it cause
-  ; i'm too lazy to redo everything just for this one small interaction
-  ; .byte Spiny
-  ; .byte Lakitu
-  .byte RedCheepCheep
-  .byte RetainerObject
+  .byte Spiny
+  .byte Lakitu
   .byte Bloober
   .byte HammerBro
   .byte Bowser
-; BowserIdentityBank:
-;   .byte CHR_SPR_CASTLE
-;   .byte CHR_SPR_CASTLE
-;   .byte CHR_SPR_CASTLE
-;   .byte CHR_SPR_GROUND
-;   .byte CHR_SPR_GROUND
-;   .byte CHR_SPR_CASTLE
-;   .byte CHR_SPR_CASTLE
-;   .byte CHR_SPR_CASTLE
 
 HandleEnemyFBallCol:
       jsr RelativeEnemyPosition  ;get relative coordinate of enemy
@@ -812,19 +799,8 @@ HurtBowser:
           ldy WorldNumber            ;use world number as offset
           lda BowserIdentities,y     ;get enemy identifier to replace bowser with
           sta Enemy_ID,x             ;set as new enemy identifier
-          ; edit: this is a way you could reload banks if you wanted to,
-          ; but it glitches other graphics, and i don't care enough to fix it.
-          ; so i just changed the secret identities instead
-          
-          ; also change the bank so the sprite isn't glitched
-          ; lda BowserIdentityBank,y
-          ; cmp CurrentCHRBank+4
-          ; beq :+
-          ;   sta CurrentCHRBank+4
-          ;   sta CurrentCHRBank+5
-          ;   inc CurrentCHRBank+5
-          ;   inc ReloadCHRBank
-          ; :
+          ; changes just the second 1kb bank for the sprites to bring in the extra identity sprites
+          SwapCastleEndCHR
           
           ; Clear out the rear of bowser
           ldy DuplicateObj_Offset

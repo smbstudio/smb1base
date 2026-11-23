@@ -125,7 +125,6 @@ OneupMushroom = $03
 
 ; CHR rom tile constants. PPU address to be specific
 
-.if MAPPER_MMC5
 CHR_BG_WATER = $00
 CHR_BG_GROUND = CHR_BG_WATER + $04
 CHR_BG_UNDERGROUND = CHR_BG_GROUND + $04
@@ -135,23 +134,23 @@ CHR_MARIOACTION = CHR_BIGMARIO + $01
 CHR_SMALLMARIO = CHR_MARIOACTION + $01
 CHR_SMALLFIRE = CHR_SMALLMARIO + $01
 CHR_MISC = CHR_SMALLFIRE + $01
-CHR_SPRITES = CHR_MISC + $01
-.else
-; For Mappers without the additional 8kb sprite window, we need to have additional area specific sprites
-CHR_BG_WATER = $00
-CHR_BG_GROUND = CHR_BG_WATER + $04
-CHR_BG_UNDERGROUND = CHR_BG_GROUND + $04
-CHR_BG_CASTLE = CHR_BG_UNDERGROUND + $04
-CHR_BIGMARIO = CHR_BG_CASTLE + $04
-CHR_MARIOACTION = CHR_BIGMARIO + $01
-CHR_SMALLMARIO = CHR_MARIOACTION + $01
-CHR_SMALLFIRE = CHR_SMALLMARIO + $01
-CHR_MISC = CHR_SMALLFIRE + $01
-CHR_SPR_WATER = CHR_MISC + $01
-CHR_SPR_GROUND = CHR_SPR_WATER + $02
-CHR_SPR_UNDERGROUND = CHR_SPR_GROUND + $02
-CHR_SPR_CASTLE = CHR_SPR_UNDERGROUND + $02
-.endif
+CHR_SPR_ENEMY = CHR_MISC + $01       ; 2 pages
+CHR_SPR_EXTRA = CHR_SPR_ENEMY + $02  ; MMC5 maps it to SPRITE_BANK_4
+CHR_SPR_MOUSE = CHR_SPR_EXTRA + $01
+CHR_SPR_CASTLE = CHR_SPR_MOUSE + $01 ; 2 pages
+CHR_SPR_CASTLE_END = CHR_SPR_CASTLE + $02 ; replaces CHR_SPR_CASTLE+1 after bowser dies
+
+; Swap the castle's second enemy page from bowser to toad/peach/lakitu.
+.macro SwapCastleEndCHR
+.local Skip
+  lda EnemyChrBank+1
+  cmp #CHR_SPR_CASTLE+1
+  bne Skip
+    lda #CHR_SPR_CASTLE_END
+    sta EnemyChrBank+1
+    inc ReloadCHRBank
+Skip:
+.endmacro
 
 ; Metatile constants
 .global BUSH_LEFT_METATILE

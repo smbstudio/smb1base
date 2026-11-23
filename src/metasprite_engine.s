@@ -19,7 +19,8 @@ SPRITE_BANK_0 = $00 | PATTERN_TABLE_1
 SPRITE_BANK_1 = $40 | PATTERN_TABLE_1
 SPRITE_BANK_2 = $80 | PATTERN_TABLE_1
 SPRITE_BANK_3 = $c0 | PATTERN_TABLE_1
-SPRITE_BANK_4 = $c0 | PATTERN_TABLE_0
+; MMC3 has no extra sprite window. This points into the BG pattern table, so it only works if the
+; current BG CHR has the tiles there (only used by the optional mouse cursor)
 SPRITE_BANK_5 = $80 | PATTERN_TABLE_0
 .endif
 

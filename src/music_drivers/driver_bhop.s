@@ -13,6 +13,10 @@ RESERVE BhopTempo, 2
 .define MUSIC_PATH "audio/famitracker"
 .define MUSIC_PROJECT_NAME "sample_songs"
 
+; Space reserved at the end of every DPCM bank for the driver code. The rest of the 8kb bank is for samples.
+; Raise this if the linker reports an overflow in PRGC_00_DRV, lower it if the samples overflow PRGC_00.
+.export AUDIO_DRIVER_SIZE = $1800
+
 .macro DriverMusicInit
   lda #.bank(bhop_music_data) | BANK_ADJUST
   jsr bhop_set_module_bank
@@ -114,7 +118,7 @@ RESERVE BhopTempo, 2
 
 .endif
 
-.define BHOP_PLAYER_SEGMENT "FIXED"
+.define BHOP_PLAYER_SEGMENT "AUDIODRV"
 .define BHOP_RAM_SEGMENT "SRAM"
 .define BHOP_ZP_SEGMENT "MUSIC_ZEROPAGE_OVERLAY"
 

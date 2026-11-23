@@ -32,11 +32,16 @@
 ; to go to in the famistudio editor. After that, you may need to add new DPCM_BANK(n) lines to the
 ; linker script (smb1base.cfg). When you do this, do NOT edit the `MEMORY` section unless you know what
 ; you are doing. Instead, just change the SEGMENT section and add another DPCM_BANK there as needed.
-; These must be numbered from 0..n, and you can use any PRGA or PRGC banks as needed.
+; These must be numbered from 0..n and be in consecutive PRGC banks, since each DPCM bank also holds
+; a copy of the driver code.
 ; Also, you need to set the build_option DPCM_BANK_COUNT to the number of banks you are using.
 
 .define MUSIC_PATH "audio/examples/famistudio"
 .define MUSIC_PROJECT_NAME "disco_mario"
+
+; Space reserved at the end of every DPCM bank for the driver code. The rest of the 8kb bank is for samples.
+; Raise this if the linker reports an overflow in PRGC_00_DRV, lower it if the samples overflow PRGC_00.
+.export AUDIO_DRIVER_SIZE = $900
 
 
 ;;;
@@ -178,10 +183,14 @@ Channel = chan
 ; The user is expected to provide the exported values in the 
 
 FAMISTUDIO_CFG_EXTERNAL = 1
+; The exported song files check this, so it needs a value when not using C
+.ifndef FAMISTUDIO_CFG_C_BINDINGS
+FAMISTUDIO_CFG_C_BINDINGS = 0
+.endif
 
 .define FAMISTUDIO_CA65_ZP_SEGMENT   MUSIC_ZEROPAGE_OVERLAY
 .define FAMISTUDIO_CA65_RAM_SEGMENT  SRAM
-.define FAMISTUDIO_CA65_CODE_SEGMENT FIXED
+.define FAMISTUDIO_CA65_CODE_SEGMENT AUDIODRV
 
 .if ::USE_CUSTOM_ENGINE_SFX
 FAMISTUDIO_CFG_SFX_SUPPORT = 1

@@ -87,32 +87,18 @@ _COMMON_DEFINE_SEGMENTS = 1
 ; UnderGround = 2
 ; Castle = 3
 
-.if MAPPER_MMC5
-.incbin "chr/mmc5/bg_water.chr"
-.incbin "chr/mmc5/bg_ground.chr"
-.incbin "chr/mmc5/bg_underground.chr"
-.incbin "chr/mmc5/bg_castle.chr"
+.incbin "chr/bg_water.chr"
+.incbin "chr/bg_ground.chr"
+.incbin "chr/bg_underground.chr"
+.incbin "chr/bg_castle.chr"
 
-.incbin "chr/mmc5/sprites_mario.chr"
-.incbin "chr/mmc5/sprites_misc.chr"
-.incbin "chr/mmc5/sprites_enemies.chr"
+.incbin "chr/sprites_mario.chr"
+.incbin "chr/sprites_misc.chr"
 
-.else
+; 1kb pages: CHR_SPR_ENEMY, CHR_SPR_ENEMY+1, CHR_SPR_EXTRA, CHR_SPR_MOUSE
+.incbin "chr/sprites_enemies.chr"
 
-.incbin "chr/mmc5/bg_water.chr"
-.incbin "chr/mmc5/bg_ground.chr"
-.incbin "chr/mmc5/bg_underground.chr"
-.incbin "chr/mmc5/bg_castle.chr"
-
-.incbin "chr/mmc3/sprites_mario.chr"
-.incbin "chr/mmc3/sprites_misc.chr"
-
-.incbin "chr/mmc3/sprites_water.chr"
-.incbin "chr/mmc3/sprites_overworld.chr"
-.incbin "chr/mmc3/sprites_underground.chr"
-.incbin "chr/mmc3/sprites_castle.chr"
-
-.endif
+.incbin "chr/sprites_castle.chr"
 
 .pushseg
 .segment "TITLE"
