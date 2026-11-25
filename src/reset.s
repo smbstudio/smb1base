@@ -2,10 +2,12 @@
 ;-------------------------------------------------------------------------------------
 ;INTERRUPT VECTORS
 
-.segment "VECTORS"
+.segment "FIXED"
+.org $fffa
     .word (NonMaskableInterrupt)
     .word (Start)
     .word (IrqScrollSplit)  ;unused
+.reloc ; back to relocatable placement for the rest of FIXED
 
 .segment "CODE"
 
@@ -533,15 +535,6 @@ SkipByte:
     dex               ;go onto the next page
     bpl InitPageLoop  ;do this until all pages of memory have been erased
     
-.if ::ENABLE_C_CODE
-; Reset the stack pointer for C code. Shame we lose the stack ...
-; TODO Might wanna investigate a new InitMemory function
-.importzp sp
-  lda #<CStack
-  sta sp
-  lda #>CStack
-  sta sp+1
-.endif
 .if ::USE_MOUSE_SUPPORT
 
   lda #1
@@ -550,21 +543,6 @@ SkipByte:
   lda #0
   rts
 .endproc
-
-.if ENABLE_C_CODE
-.importzp ptr4, tmp4
-; This allows c code to reuse the farcall mechanism
-cproc farcall_trampoline
-  SMC_StoreValue SafecallA, a
-  lda ptr4
-  SMC_StoreLowByte FarcallJmpTarget, a
-  lda ptr4+1
-  SMC_StoreHighByte FarcallJmpTarget, a
-  lda tmp4
-  ora #MMC5_PRG_ROM
-  jmp FarCallCommon
-endcproc
-.endif
 
 .if DEBUG_ADD_EXTRA_LAG
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -617,7 +595,8 @@ mouse_mask: .res 1           ; Bitmask indicating which $4017 bit the mouse is o
 ; NOTE: These variables are not page-sensitive and can be absolute.
 advance_sensitivity: .res 1  ; Bool.
 
-.segment "OAMALIGNED"
+.segment "FIXED"
+.org $e000
 
 .if ::MOUSE_READ_FROM_PORT = 1
 
@@ -775,7 +754,8 @@ MouseBoundsMax:
 RESERVE_ZP SavedJoypad1Bits, 1
 RESERVE_ZP SavedJoypad2Bits, 1
 
-.segment "OAMALIGNED"
+.segment "FIXED"
+.org $e000
 .proc OAMandReadJoypad
   lda #OAM
   sta OAM_DMA          ; ------ OAM DMA ------

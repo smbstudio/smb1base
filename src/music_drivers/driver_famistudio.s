@@ -17,31 +17,26 @@
 
 ; IMPORTANT: When you export the single file song data, famistudio will show a log that
 ; contains a list of settings that you MUST configure in order for the engine to work.
-; Replace whatever settings you find in the `build_options.ini` under the `CUSTOM AUDIO CONFIGURATION`
+; Replace whatever settings you find in the `build_options.inc` under the `CUSTOM AUDIO CONFIGURATION`
 ; section with all of the required settings that famistudio export requires.
 
-; NOTE: If you are using more than one bank for music, then you will need to update the `smb1base.cfg` linker script
+; NOTE: If you are using more than one bank for music, then you will need to update the segment layout in `src/segments.s`
 ; Inside you will find a list of lines that look something like
-; MUSIC_overworld:    load = PRGA_05 .....
+; .segment "MUSIC_overworld" :load "PRGA_05" :define
 ;
 ; This `PRGA_05` determines what bank the song is in. All you need to do is move some songs over to new banks in order
 ; to get it to work. So for this example, you can move it to PRGA_06 to free up song space in PRGA_05
-; MUSIC_overworld:    load = PRGA_06 .....
+; .segment "MUSIC_overworld" :load "PRGA_06" :define
 
 ; NOTE: When using DPCM bank switching, you must set the banks that you want each sample 
-; to go to in the famistudio editor. After that, you may need to add new DPCM_BANK(n) lines to the
-; linker script (smb1base.cfg). When you do this, do NOT edit the `MEMORY` section unless you know what
-; you are doing. Instead, just change the SEGMENT section and add another DPCM_BANK there as needed.
-; These must be numbered from 0..n and be in consecutive PRGC banks, since each DPCM bank also holds
-; a copy of the driver code.
+; to go to in the famistudio editor. After that, you may need to add new DPCM_BANK(n) lines to
+; `src/segments.s`. Add a PRGC_xx bank, a matching DPCM_BANKn segment, and add the PRGC_xx bank to the
+; AUDIODRV mirror list there too, since each DPCM bank also holds a copy of the driver code.
+; These must be numbered from 0..n and be in consecutive PRGC banks.
 ; Also, you need to set the build_option DPCM_BANK_COUNT to the number of banks you are using.
 
 .define MUSIC_PATH "audio/examples/famistudio"
 .define MUSIC_PROJECT_NAME "disco_mario"
-
-; Space reserved at the end of every DPCM bank for the driver code. The rest of the 8kb bank is for samples.
-; Raise this if the linker reports an overflow in PRGC_00_DRV, lower it if the samples overflow PRGC_00.
-.export AUDIO_DRIVER_SIZE = $900
 
 
 ;;;
@@ -84,11 +79,11 @@ BANK_ADJUST .set $80
 .endif
 
 .macro DriverMusicPlay song
-.if .match(song, a)
+.if .xmatch(song, a)
   ; Nothing
-.elseif .match(song, x)
+.elseif .xmatch(song, x)
   txa
-.elseif .match(song, y)
+.elseif .xmatch(song, y)
   tya
 .else
   .if (.match (.left (1, {song}), #))
@@ -138,11 +133,11 @@ BANK_ADJUST .set $80
 .if ::USE_CUSTOM_ENGINE_SFX
 
 .macro DriverSFXPlay sfx, chan
-.if .match(sfx, a)
+.if .xmatch(sfx, a)
   ; Nothing
-.elseif .match(sfx, x)
+.elseif .xmatch(sfx, x)
   txa
-.elseif .match(sfx, y)
+.elseif .xmatch(sfx, y)
   tya
 .else
   .if (.match (.left (1, {sfx}), #))
@@ -306,20 +301,20 @@ sfx_data:
 .endif
 
 .if DPCM_BANK_COUNT > 1
-.segment .concat("DPCM_BANK", .string(0))
+.segment .sprintf("DPCM_BANK%d", 0)
 .incbin .sprintf("%s/%s_bank%d.dmc", MUSIC_PATH, MUSIC_PROJECT_NAME, 0)
 
-.segment .concat("DPCM_BANK", .string(1))
+.segment .sprintf("DPCM_BANK%d", 1)
 .incbin .sprintf("%s/%s_bank%d.dmc", MUSIC_PATH, MUSIC_PROJECT_NAME, 1)
 .else
 ; Not using banked dpcm, so just load without the bank tag at the end
-.segment .concat("DPCM_BANK", .string(0))
+.segment .sprintf("DPCM_BANK%d", 0)
 .incbin .sprintf("%s/%s.dmc", MUSIC_PATH, MUSIC_PROJECT_NAME)
 
 .endif
 
 .if DPCM_BANK_COUNT > 2
-.segment .concat("DPCM_BANK", .string(2))
+.segment .sprintf("DPCM_BANK%d", 2)
 .incbin .sprintf("%s/%s_bank%d.dmc", MUSIC_PATH, MUSIC_PROJECT_NAME, 2)
 .endif
 

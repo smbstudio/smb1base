@@ -125,11 +125,6 @@ ExitPause:     rts
 clabel GameCoreRoutine
 GameCoreRoutine:
 
-  .if ENABLE_C_CODE
-    .import _before_frame_callback
-    jsr _before_frame_callback
-  .endif
-
   ldx CurrentPlayer          ;get which player is on the screen
   lda SavedJoypadBits,x      ;use appropriate player's controller bits
   sta SavedJoypadBits        ;as the master controller bits
@@ -185,10 +180,6 @@ ProcELoop:
   cmp #13 ; Force a draw every 13 frames (~5fps) so its not too broken at extreme lag
   bcc SkipDrawingCauseLagged
 NoLagSoDraw:
-  .if ENABLE_C_CODE
-    .import _sprite_render_callback
-    jsr _sprite_render_callback
-  .endif
     farcall DrawAllMetasprites
     lda #0
     sta FramesSinceLastSpriteDraw
@@ -262,12 +253,7 @@ ExitEng:
   ; :
 .endif
 
-.if ENABLE_C_CODE
-  .import _after_frame_callback
-  jmp _after_frame_callback
-.else
   rts                        ;and after all that, we're finally done!
-.endif
 
 
 ;-------------------------------------------------------------------------------------
@@ -682,28 +668,6 @@ ClearVRLoop: sta VRAM_Buffer1-1,y      ;clear buffer at $0300-$03ff
 
 ;-------------------------------------------------------------------------------------
 
-.if USE_CUSTOM_TITLESCREEN
-.proc TitleScreenMode
-  lda OperMode_Task
-  jsr JumpEngine
-
-  .word InitializeGame
-  .word FarCallTitleScreenSetup
-  .word PrimaryGameSetup
-  .word FarCallGameMenu
-
-.import _title_screen_setup
-FarCallTitleScreenSetup:
-  farcall _title_screen_setup, jmp
-  ; jmp _title_screen_setup
-
-.import _title_screen_menu
-FarCallGameMenu:
-  farcall _title_screen_menu, jmp
-  ; jmp _title_screen_menu
-
-.endproc
-.else
 .proc TitleScreenMode
   lda OperMode_Task
   jsr JumpEngine
@@ -713,7 +677,6 @@ FarCallGameMenu:
   .word PrimaryGameSetup
   .word GameMenuRoutine
 .endproc
-.endif
 
 InitializeGame:
 .if ::USE_SMB2J_FEATURES

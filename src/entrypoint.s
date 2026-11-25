@@ -4,12 +4,14 @@
 
 .macpack longbranch
 .macpack generic
+.macpack common
 
 .linecont on
 .feature force_range
 
 
 .include "options.s"
+.include "segments.s"
 
 
 .include "inc/nes2header.inc"
@@ -59,8 +61,6 @@ _COMMON_DEFINE_SEGMENTS = 1
 .include "screen_render.s"
 .include "sprite_render.s"
 
-
-.segment "AUDIO"
 
 .include "music_drivers/audio.s"
 

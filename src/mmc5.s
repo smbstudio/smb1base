@@ -120,11 +120,11 @@ MMC5_CHR_BG_BANK_0C = MMC5_CHR_BANK_BASE + 11
 
 .macro _BANK_INNER bank, ADDRESS
 .scope
-  .if .match(bank, a)
+  .if .xmatch(bank, a)
     sta ADDRESS
-  .elseif .match(bank, x)
+  .elseif .xmatch(bank, x)
     stx ADDRESS
-  .elseif .match(bank, y)
+  .elseif .xmatch(bank, y)
     sty ADDRESS
   .else
     .if (.match (.left (1, {bank}), #))
@@ -301,7 +301,7 @@ SMCCODE:
 
 ; Put the bank switching routine into RAM for fastest farcalls
 
-.include "smc.inc"
+.include "inc/smc.inc"
 
 FarCallCommon:
   SMC_StoreValue NextBank, a

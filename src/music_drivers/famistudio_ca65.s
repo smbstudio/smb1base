@@ -7553,17 +7553,3 @@ famistudio_rhythm_lut:
     .byte $ff
 .endif
 .endif
-
-; Re-export C friendly names of the functions for cc65 and llvm-mos (which can link against ca65 libraries)
-.export _famistudio_init            := famistudio_init
-.export _famistudio_music_play      := famistudio_music_play
-.export _famistudio_music_pause     := famistudio_music_pause
-.export _famistudio_music_stop      := famistudio_music_stop
-.export _famistudio_update          := famistudio_update
-.if FAMISTUDIO_CFG_SFX_SUPPORT
-.export _famistudio_sfx_init        := famistudio_sfx_init
-.export _famistudio_sfx_play        := famistudio_sfx_play
-.if FAMISTUDIO_CFG_DPCM_SUPPORT
-.export _famistudio_sfx_sample_play := famistudio_sfx_sample_play
-.endif
-.endif

@@ -12,9 +12,10 @@ mod for Mario!
 
 ### Features
 
-- Easy to build; just run `build.sh` or `build.bat`
+- Easy to build; install [js65](https://jsnesx.github.io/js65/download/) (either with `npm install -g js65` or downloading the exe file and placing it in the local folder) and run `js65 build`,
+  or just run `build.sh` or `build.bat` which do the same thing. The ROM is written to `build/smb1base.nes`
 
-- Flexible feature set (check out `options.s` for all available options!)
+- Flexible feature set (check out `build_options.inc` for all available options!)
 
 - Multiple optional audio engines available to allow importing songs from modern tools like Famitracker or Famistudio
   - The latest DN famitracker is supported through bhop (https://github.com/Dn-Programming-Core-Management/Dn-FamiTracker/releases/)
@@ -45,7 +46,6 @@ mod for Mario!
 
 - Sooner than later
   - Optional bugfixes for the vanilla game to disable
-  - CC65 support (add C headers and callback/hook locations that can call into C code)
 - Long term goals
   - Optional Tiled based level data for easily making levels without using vanilla mario data
   - Optional 4-way scrolling for interesting new maps

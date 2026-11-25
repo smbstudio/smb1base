@@ -1,3 +1,5 @@
+.include "build_options.inc"
+
 
 ;;;;;;;;;;;;;;;;;;;
 ; Internal validation for the options. If you see one of these error messages, you need to follow the instructions and
@@ -16,13 +18,6 @@
     ; if you get this error then you've set a boolean config option to something other than 0 or 1
     .error .sprintf("Boolean Option `%s` was set to a value other than 0 or 1", .string(name))
     .fatal "Invalid Options selected"
-  .endif
-  .ifdef PRINT_OPTIONS_FOR_C
-    .if PRINT_OPTIONS_FOR_C
-      .out .sprintf("#ifndef %s", .string(name))
-      .out .sprintf("  #define %s %d", .string(name), DefaultVal)
-      .out "#endif"
-    .endif
   .endif
 .endmacro
 
@@ -44,20 +39,11 @@ Num = 123
     .error .sprintf("Number Option `%s` was set to a non numeric value %d", .string(name), .ident(.string(name)))
     .fatal "Invalid Options selected"
   .endif
-  .ifdef PRINT_OPTIONS_FOR_C
-    .if PRINT_OPTIONS_FOR_C
-      .out .sprintf("#ifndef %s", .string(name))
-      .out .sprintf("  #define %s %d", .string(name), DefaultVal)
-      .out "#endif"
-    .endif
-  .endif
 .endmacro
 
 bool_option MAPPER_MMC3
 bool_option MAPPER_MMC5
 bool_option USE_SMB2J_FEATURES
-bool_option ENABLE_C_CODE
-bool_option USE_CUSTOM_TITLESCREEN
 bool_option MULTIPLE_POWERUPS_ON_SCREEN
 bool_option USE_LOOPING_ANIM_CYCLE
 bool_option USE_MOUSE_SUPPORT
