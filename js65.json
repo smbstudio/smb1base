@@ -15,6 +15,7 @@
     "output": "smb1base.nes",
     "dbgfile": "smb1base.dbg",
     "mlbfile": "smb1base.mlb",
-    "mapfile": "smb1base.map"
+    "mapfile": "smb1base.map",
+    "allowJavascript": true
   }]
 }
