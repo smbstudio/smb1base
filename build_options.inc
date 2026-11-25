@@ -17,15 +17,16 @@
 ; because it has a ; in front of it, it WILL NOT BE ACTIVE
 ; Putting a ; in front of a line is equivalent to setting that value to 0
 
-; When turning on an option, use the name=value without spaces between the name/value and the equals sign =
-; This is a known limitation of the ini format and why I plan to move away from it someday.
+; This file is plain assembly that is included at the top of options.s. Set an option with name=value, for example
+; MAPPER_MMC5=1
+; Spaces around the equals sign are fine. Options that are missing or commented out use their default of 0.
 
 ; If you don't understand what an option means, then its best to ignore it for now. We chose solid defaults
 ; for each option that will give you the most configurability out of the box without adding too much complexity.
 
 
 ;;;;;;;;;;;;;;;;;;;;;;
-[GENERAL]
+; [GENERAL]
 
 ; Add in backported features such as new sfx and wind from SMB2J
 ; NOTE: Not all features are backported yet.
@@ -41,13 +42,6 @@ MAPPER_MMC5=1
 ; missing features.
 MAPPER_MMC3=0
 
-; To try and make some tasks a bit easier, you can enable C compiler support through CC65. There are a handful of
-; calbacks that you can implement in C to make changes to the game in a higher level language for rapid development.
-ENABLE_C_CODE=0
-
-; Draw and run the title screen using C code (in title.c) instead of ASM
-USE_CUSTOM_TITLESCREEN=0
-
 ; Enable PowerUps and Flags to spawn on slot others than the special slot (slot 6)
 MULTIPLE_POWERUPS_ON_SCREEN=1
 
@@ -56,7 +50,7 @@ MULTIPLE_POWERUPS_ON_SCREEN=1
 USE_LOOPING_ANIM_CYCLE=0
 
 ;;;;;;;;;;;;;;;;;;;;;;
-[AUDIO]
+; [AUDIO]
 
 ; ---- MUSIC ----
 ; Enable one of the follow music engines by uncommenting the one you want to use
@@ -100,7 +94,7 @@ FAMISTUDIO_CFG_DPCM_SUPPORT=1
 BHOP_PATTERN_BANKING=1
 
 ;;;;;;;;;;;;;;;;;;;;;;
-[MOUSE]
+; [MOUSE]
 
 ; Enable reading the SNES mouse plugged into port 2 instead of using a second player.
 ; This will certainly break the vanilla 2 player mode.
@@ -124,7 +118,7 @@ MOUSE_Y_MINIMUM=1
 MOUSE_Y_MAXIMUM=239
 
 ;;;;;;;;;;;;;;;;;;;;;;
-[DEBUG]
+; [DEBUG]
 
 ; Enable DEBUG_WORLD_SELECT to turn on world select. When in the level loading screen, press b to increase the level number and
 ; press a to increase the world number.

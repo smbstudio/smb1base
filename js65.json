@@ -1,0 +1,13 @@
+{
+  "outDir": "build",
+  "projects": [{
+    "name": "smb1base",
+    "sources": ["src/entrypoint.s"],
+    "includePaths": [".", "src"],
+    "binIncludePaths": ["."],
+    "output": "smb1base.nes",
+    "dbgfile": "smb1base.dbg",
+    "mlbfile": "smb1base.mlb",
+    "mapfile": "smb1base.map"
+  }]
+}

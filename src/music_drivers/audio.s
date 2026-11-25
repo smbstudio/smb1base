@@ -42,12 +42,6 @@ RESERVE PauseModeFlag, 1
   rts
 .endproc
 
-; Marker for the build script to copy the driver over
-.pushseg
-.segment "AUDIODRV_COPY1"
-  .byte 0
-.popseg
-
 .if ::USE_FAMISTUDIO_MUSIC
 .include "driver_famistudio.s"
 .include "custom_music.s"

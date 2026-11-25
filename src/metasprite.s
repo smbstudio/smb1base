@@ -453,19 +453,19 @@ BALANCE_PLATFORM_ROPE_2 = $7e
 
 ; Brick chunks have a really custom movement and making them a metasprite
 ; wasn't worth the trouble for now.
-BRICK_CHUNK_TILE = MetaspriteVramOffset {$16}, {SPRITE_BANK_1}
+BRICK_CHUNK_TILE = MetaspriteVramOffset($16, SPRITE_BANK_1)
 
 ; Used by the "small platform" which is the elevator platforms
 ; PLATFORM_GIRDER = $5b
-PLATFORM_GIRDER = MetaspriteVramOffset {$1a}, {SPRITE_BANK_1}
+PLATFORM_GIRDER = MetaspriteVramOffset($1a, SPRITE_BANK_1)
 
 ; Vine drawing is probably possible to do as a metasprite but not worth the trouble
-VINE_TILE_1 = MetaspriteVramOffset {$28}, {SPRITE_BANK_3}
-VINE_TILE_2 = MetaspriteVramOffset {$2a}, {SPRITE_BANK_3}
+VINE_TILE_1 = MetaspriteVramOffset($28, SPRITE_BANK_3)
+VINE_TILE_2 = MetaspriteVramOffset($2a, SPRITE_BANK_3)
 
 ; Used when drawing firebars (not when shooting fireballs which are metasprites)
-FIREBALL_TILE1 = MetaspriteVramOffset {$3c}, {SPRITE_BANK_0}
-FIREBALL_TILE2 = MetaspriteVramOffset {$3e}, {SPRITE_BANK_0}
+FIREBALL_TILE1 = MetaspriteVramOffset($3c, SPRITE_BANK_0)
+FIREBALL_TILE2 = MetaspriteVramOffset($3e, SPRITE_BANK_0)
 
 
 ;;;;;;;;;;;
@@ -486,13 +486,13 @@ MetaspriteData "PLATFORM_GIRDER_SMALL_FRAME_2", MetaspritePlatformGirderSmallFra
 MetaspritePlatformGirderSmall:
   .byte  4 * 4
 .repeat 4, I
-  .byte  MetaspriteVramOffset{$1a}, {SPRITE_BANK_1}, PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (I * 8)
+  .byte  MetaspriteVramOffset($1a, SPRITE_BANK_1), PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (I * 8)
 .endrepeat
 
 MetaspritePlatformGirderSmallFrame2:
   .byte  4 * 4
 .repeat 4, I
-  .byte  MetaspriteVramOffset{$1a}, {SPRITE_BANK_1}, PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (((I + 2) .mod 4) * 8)
+  .byte  MetaspriteVramOffset($1a, SPRITE_BANK_1), PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (((I + 2) .mod 4) * 8)
 .endrepeat
 
 MetaspriteData "PLATFORM_GIRDER_LARGE", MetaspritePlatformGirderLarge
@@ -501,13 +501,13 @@ MetaspriteData "PLATFORM_GIRDER_LARGE_FRAME_2", MetaspritePlatformGirderLargeFra
 MetaspritePlatformGirderLarge:
   .byte  6 * 4
 .repeat 6, I
-  .byte  MetaspriteVramOffset{$1a}, {SPRITE_BANK_1}, PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (I * 8)
+  .byte  MetaspriteVramOffset($1a, SPRITE_BANK_1), PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (I * 8)
 .endrepeat
 
 MetaspritePlatformGirderLargeFrame2:
   .byte  6 * 4
 .repeat 6, I
-  .byte  MetaspriteVramOffset{$1a}, {SPRITE_BANK_1}, PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (((I + 3) .mod 6) * 8)
+  .byte  MetaspriteVramOffset($1a, SPRITE_BANK_1), PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (((I + 3) .mod 6) * 8)
 .endrepeat
 
 ;;;;;;;;;;;
@@ -523,13 +523,13 @@ MetaspriteData "PLATFORM_CLOUD_SMALL_FRAME_2", MetaspritePlatformCloudSmallFrame
 MetaspritePlatformCloudSmall:
   .byte  4 * 4
 .repeat 4, I
-  .byte  MetaspriteVramOffset{$1c}, {SPRITE_BANK_1}, PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (I * 8)
+  .byte  MetaspriteVramOffset($1c, SPRITE_BANK_1), PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (I * 8)
 .endrepeat
 
 MetaspritePlatformCloudSmallFrame2:
   .byte  4 * 4
 .repeat 4, I
-  .byte  MetaspriteVramOffset{$1c}, {SPRITE_BANK_1}, PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (((I + 2) .mod 4) * 8)
+  .byte  MetaspriteVramOffset($1c, SPRITE_BANK_1), PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (((I + 2) .mod 4) * 8)
 .endrepeat
 
 MetaspriteData "PLATFORM_CLOUD_LARGE", MetaspritePlatformCloudLarge
@@ -538,13 +538,13 @@ MetaspriteData "PLATFORM_CLOUD_LARGE_FRAME_2", MetaspritePlatformCloudLargeFrame
 MetaspritePlatformCloudLarge:
   .byte  6 * 4
 .repeat 6, I
-  .byte  MetaspriteVramOffset{$1c}, {SPRITE_BANK_1}, PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (I * 8)
+  .byte  MetaspriteVramOffset($1c, SPRITE_BANK_1), PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (I * 8)
 .endrepeat
 
 MetaspritePlatformCloudLargeFrame2:
   .byte  6 * 4
 .repeat 6, I
-  .byte  MetaspriteVramOffset{$1c}, {SPRITE_BANK_1}, PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (((I + 3) .mod 6) * 8)
+  .byte  MetaspriteVramOffset($1c, SPRITE_BANK_1), PALETTE,  0 + Y_OFFSET,  0 + X_OFFSET + (((I + 3) .mod 6) * 8)
 .endrepeat
 
 
@@ -554,9 +554,9 @@ PALETTE  .set 2
 MetaspriteData "BOWSER_FLAME", MetaspriteBowserFlame, MetaspriteBowserFlame
 MetaspriteBowserFlame:
   .byte 3 * 4
-  .byte  MetaspriteVramOffset{$1c}, {SPRITE_BANK_2}, PALETTE,   0 + Y_OFFSET,  0 + X_OFFSET
-  .byte  MetaspriteVramOffset{$1e}, {SPRITE_BANK_2}, PALETTE,   0 + Y_OFFSET,  8 + X_OFFSET
-  .byte  MetaspriteVramOffset{$3c}, {SPRITE_BANK_2}, PALETTE,   0 + Y_OFFSET, 16 + X_OFFSET
+  .byte  MetaspriteVramOffset($1c, SPRITE_BANK_2), PALETTE,   0 + Y_OFFSET,  0 + X_OFFSET
+  .byte  MetaspriteVramOffset($1e, SPRITE_BANK_2), PALETTE,   0 + Y_OFFSET,  8 + X_OFFSET
+  .byte  MetaspriteVramOffset($3c, SPRITE_BANK_2), PALETTE,   0 + Y_OFFSET, 16 + X_OFFSET
 
 
 

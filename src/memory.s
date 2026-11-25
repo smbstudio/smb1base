@@ -1,11 +1,8 @@
 
-; Quick macros to reserve a value and export it for usage in C
 .macro RESERVE name, size
-  .export .ident(.sprintf("_%s", .string(name))) = .ident(.string(name)) 
   .ident(.string(name)): .res size
 .endmacro
 .macro RESERVE_ZP name, size
-  .exportzp .ident(.sprintf("_%s", .string(name))) = .ident(.string(name)) 
   .ident(.string(name)): .res size
 .endmacro
 
@@ -192,10 +189,6 @@ RESERVE SwitchToMainIRQ, 1
 RESERVE IrqPointerJmp, 3
 IrqPointer := IrqPointerJmp + 1
 
-.if ENABLE_C_CODE
-RESERVE CStack, $20
-.endif
-
 ; segment "BSS"
 .segment "OAM"
 
@@ -204,7 +197,6 @@ RESERVE Sprite_Tilenumber, 1
 RESERVE Sprite_Attributes, 1
 RESERVE Sprite_X_Position, 1
 Sprite_Data := Sprite_Y_Position
-.export _Sprite_Data = Sprite_Data
 
 .segment "BSS"
 

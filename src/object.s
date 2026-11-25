@@ -924,10 +924,10 @@ WriteMetasprite:
     ; if bowser is defeated set the vertical flip flag
     lda BowserGfxFlag
     lsr
-    lda #MetaspriteOffset{-8} | MSPR_VERTICAL_FLIP
+    lda #MetaspriteOffset(-8) | MSPR_VERTICAL_FLIP
     bcs DontOffsetBowserFrontHalf
       ; when the back side flips, it moves up 16px
-      lda #MetaspriteOffset{-24} | MSPR_VERTICAL_FLIP
+      lda #MetaspriteOffset(-24) | MSPR_VERTICAL_FLIP
   DontOffsetBowserFrontHalf:
     sta EnemyVerticalFlip,x
 BowserNotDefeated:
@@ -2894,8 +2894,7 @@ MoveRedPTUpOrDown:
   bcc MovPTDwn                ;if current < central, jump to move downwards
     jmp MoveRedPTroopaUp        ;otherwise jump to move upwards
 MovPTDwn:
-  jmp MoveRedPTroopaDown      ;move downwards
-
+  FALLTHROUGH MoveRedPTroopaDown      ;move downwards
 
 ;--------------------------------
 

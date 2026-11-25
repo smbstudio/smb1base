@@ -67,7 +67,7 @@ IRQENABLE   = $e001
 .macro _BANK_INNER bank, select
 .scope
   ; set fixed $8000 bank bit
-.if .match(bank, a)
+.if .xmatch(bank, a)
   pha
   lda #select | PRG_FIXED_8
   sta BANK_SELECT
@@ -75,12 +75,12 @@ IRQENABLE   = $e001
   lda #select | PRG_FIXED_8
   sta BANK_SELECT
 .endif
-  .if .match(bank, a)
+  .if .xmatch(bank, a)
     pla
     sta BANK_DATA
-  .elseif .match(bank, x)
+  .elseif .xmatch(bank, x)
     stx BANK_DATA
-  .elseif .match(bank, y)
+  .elseif .xmatch(bank, y)
     sty BANK_DATA
   .else
     .if (.match (.left (1, {arg}), #))
@@ -183,11 +183,11 @@ AreaTypeEnemyBankMap:
 
 
 .macro SetScanlineIRQ line
-  .if .match(line, x)
+  .if .xmatch(line, x)
     stx IRQLATCH
     stx IRQRELOAD
     stx IRQENABLE
-  .elseif .match(line, y)
+  .elseif .xmatch(line, y)
     sty IRQLATCH
     sty IRQRELOAD
     sty IRQENABLE
@@ -255,7 +255,7 @@ SMCCODE:
 
 ; Put the bank switching routine into RAM for fastest farcalls
 
-.include "smc.inc"
+.include "inc/smc.inc"
 
 FarCallCommon:
   SMC_StoreValue NextBank, a

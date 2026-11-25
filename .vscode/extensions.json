@@ -1,7 +1,6 @@
 {
     "recommendations": [
-        "alchemic-raker.alchemy65",
         "pucelle.run-on-save",
-        "llvm-vs-code-extensions.vscode-clangd"
+        "jsnesx.js65-vscode"
     ]
 }

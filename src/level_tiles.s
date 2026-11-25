@@ -2402,7 +2402,7 @@ ExitStpPowerUp:
   sec
   sbc #$08                  ;subtract 8 pixels
   sta Enemy_Y_Position,x    ;and use as vertical coordinate of power-up object
-  ; fallthrough
+  FALLTHROUGH PwrUpJmp
 .endproc
 .proc PwrUpJmp
   lda #$01                  ;this is a residual jump point in enemy object jump table

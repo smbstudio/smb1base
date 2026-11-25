@@ -350,7 +350,7 @@ ProcessDemotedKoopa:
   lda Enemy_SprAttrib,x
   ora #OAM_PALLETE_1
   sta Enemy_SprAttrib,x
-  ; fallthrough
+  FALLTHROUGH ProcessKoopa
 .endproc
 .proc ProcessKoopa
   ; Reinitialize the flip flag, we'll set it later if we need to flip
@@ -373,7 +373,7 @@ CheckRightSideUpShell:
     ; and then check for animation
     ; We do need an offset, so turn on VFlip and set the offset 
     ; Add 2 px down offset
-    lda #MetaspriteOffset{2} | MSPR_VERTICAL_FLIP
+    lda #MetaspriteOffset(2) | MSPR_VERTICAL_FLIP
     sta EnemyVerticalFlip,x
 NormalKoopaAnimation:
   lda Enemy_State,x
@@ -488,7 +488,7 @@ CheckRightSideUpShell:
     ; Shell is upside down in OAM, so flip the buzzy right side up
     ; and then check for animation
     ; Add 2 px down offset
-    lda #MetaspriteOffset{2} | MSPR_VERTICAL_FLIP
+    lda #MetaspriteOffset(2) | MSPR_VERTICAL_FLIP
     sta EnemyVerticalFlip,x
     bne WriteMetasprite ; unconditional. we don't animate upside down buzzy
 NormalBuzzyAnimation:
