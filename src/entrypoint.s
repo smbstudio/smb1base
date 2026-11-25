@@ -87,16 +87,22 @@ _COMMON_DEFINE_SEGMENTS = 1
 ; UnderGround = 2
 ; Castle = 3
 
+.incbin "chr/bg_common.chr"
 .incbin "chr/bg_water.chr"
+.incbin "chr/bg_common.chr"
 .incbin "chr/bg_ground.chr"
+.incbin "chr/bg_common.chr"
 .incbin "chr/bg_underground.chr"
+.incbin "chr/bg_common.chr"
 .incbin "chr/bg_castle.chr"
 
 .incbin "chr/sprites_mario.chr"
 .incbin "chr/sprites_misc.chr"
 
-; 1kb pages: CHR_SPR_ENEMY, CHR_SPR_ENEMY+1, CHR_SPR_EXTRA, CHR_SPR_MOUSE
+; 1kb pages: CHR_SPR_ENEMY, CHR_SPR_ENEMY+1, CHR_SPR_EXTRA
 .incbin "chr/sprites_enemies.chr"
+; 1kb page: CHR_SPR_MOUSE
+.incbin "chr/sprites_mouse.chr"
 
 .incbin "chr/sprites_castle.chr"
 
