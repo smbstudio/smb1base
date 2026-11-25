@@ -8,3 +8,14 @@ __pycache__/
 *.o
 tools/Windows/NEXXT 3.0/presets and configs/*
 
+
+# Extracted from the base rom by src/gen/extract_chr.s
+chr/bg_common.chr
+chr/bg_water.chr
+chr/bg_ground.chr
+chr/bg_underground.chr
+chr/bg_castle.chr
+chr/sprites_mario.chr
+chr/sprites_misc.chr
+chr/sprites_enemies.chr
+chr/sprites_castle.chr

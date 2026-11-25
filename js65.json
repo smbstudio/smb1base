@@ -1,6 +1,13 @@
 {
   "outDir": "build",
   "projects": [{
+    "name": "extract_chr",
+    "sources": ["src/gen/extract_chr.s"],
+    "includePaths": ["."],
+    "binIncludePaths": ["."],
+    "output": "extract_chr.bin",
+    "allowJavascript": true
+  }, {
     "name": "smb1base",
     "sources": ["src/entrypoint.s"],
     "includePaths": [".", "src"],

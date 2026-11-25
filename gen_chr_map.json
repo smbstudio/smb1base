@@ -1,0 +1,11 @@
+{
+  "outDir": "build",
+  "projects": [{
+    "name": "gen_chr_map",
+    "sources": ["src/gen/gen_chr_map.s"],
+    "includePaths": ["."],
+    "binIncludePaths": ["."],
+    "output": "gen_chr_map.bin",
+    "allowJavascript": true
+  }]
+}
