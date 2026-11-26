@@ -7,9 +7,8 @@
     .word (NonMaskableInterrupt)
     .word (Start)
     .word (IrqScrollSplit)  ;unused
-.reloc ; back to relocatable placement for the rest of FIXED
 
-; In FIXED to leave room in PRGLow
+.org $ff00
 .proc IrqScrollSplit
   pha
   phx
@@ -76,8 +75,7 @@ DelayACycles:
 
 ;-------------------------------------------------------------------------------------
 
-.segment "FIXED"
-
+.reloc
 .proc Start
   sei                          ;pretty standard 6502 type init here
   cld
@@ -216,7 +214,7 @@ InitScroll:
   rts
 .endproc
 
-.segment "FIXED"
+.reloc
 .proc NonMaskableInterrupt
   pha
   phx
