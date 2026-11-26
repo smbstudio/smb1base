@@ -2127,8 +2127,7 @@ CastleBridgeObj:
       jmp ChainObj
 
 AxeObj:
-      lda #$08                  ;load bowser's palette into sprite portion of palette
-      sta VRAM_Buffer_AddrCtrl
+      VramSelectSource BowserPaletteDataOffset ;load bowser's sprite palette
 
 ChainObj:
       ldy R0                    ;get value loaded earlier from decoder

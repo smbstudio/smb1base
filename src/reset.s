@@ -312,7 +312,7 @@ SkipSprite0:
 
   ldy #$00
   ldx VRAM_Buffer_AddrCtrl  ;check for usage of $0341
-  cpx #$06
+  cpx #VramSrcColumn
   bne InitBuffer
     iny                       ;get offset based on usage
 InitBuffer:

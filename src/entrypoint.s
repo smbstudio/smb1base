@@ -39,6 +39,7 @@ _COMMON_DEFINE_SEGMENTS = 1
 .include "inc/charmap.inc"
 .include "inc/constants.inc"
 .include "memory.s"
+.include "inc/vram.inc"
 
 .if MAPPER_MMC5
 .include "mmc5.s"
