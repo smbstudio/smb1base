@@ -211,7 +211,7 @@ MapperInit:
   ldx #5
   CHRBankInitLoop:
     txa
-    ora PRG_FIXED_8
+    ora #PRG_FIXED_8
     sta BANK_SELECT
     lda BankInitValues,x
     sta CurrentCHRBank,x

@@ -9,8 +9,7 @@
     .word (IrqScrollSplit)  ;unused
 .reloc ; back to relocatable placement for the rest of FIXED
 
-.segment "CODE"
-
+; In FIXED to leave room in PRGLow
 .proc IrqScrollSplit
   pha
   phx
@@ -53,6 +52,8 @@ DelayACycles:
 @4:     lsr     ;  2 2 - - 2  7F 7F -- -- 00
 @5:     bcs @6  ;  2 3 2 3 2  7F 7F 00 00 00
 @6:
+; A page crossing adds a cycle to a taken branch, which would break the delay
+.assert .hibyte(DelayACycles) = .hibyte(@6), lderror, "IrqScrollSplit delay loop crosses a page"
 
     ; ((Y & $F8) << 2) | (X >> 3) in A for $2006 later.
     txa
@@ -363,7 +364,8 @@ OnCooldown:
 
 .endproc
 
-.segment "CODE"
+; Rarely read data lives in FIXED to leave room in PRGLow
+.segment "FIXED"
 ;-------------------------------------------------------------------------------------
 ;$00 - vram buffer address table low, also used for pseudorandom bit
 ;$01 - vram buffer address table high
