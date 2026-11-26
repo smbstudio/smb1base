@@ -1005,7 +1005,7 @@ MTILE_PALETTE_2 = 2 << 6
 MTILE_PALETTE_3 = 3 << 6
 ; TODO: consider making a second batch of table entries for extended attributes
 ; TODO: update the level format to condense the table (remove the palette from bit 6/7 and renumber the metatiles?)
-; could maybe pull this off by changing all of the metatiles in level_tiles.s without touching the level format (so it should still be possible to use existing level editors)
+; could maybe pull this off by changing all of the metatiles in level_vanilla.s without touching the level format (so it should still be possible to use existing level editors)
 
 MTILE_CURRENT_INDEX .set $00
   MTileDefine $24, $24, $24, $24, MTILE_PALETTE_0 ;blank

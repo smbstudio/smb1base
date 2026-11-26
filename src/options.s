@@ -14,6 +14,9 @@
   .endif
   .if .not .defined(.ident(.string(name)))
     .ident(.string(name)) .set DefaultVal
+  .elseif .not .const(.ident(.string(name)))
+    .error .sprintf("Boolean Option `%s` must be a numeric constant", .string(name))
+    .fatal "Invalid Options selected"
   .elseif .not ((.ident(.string(name))=1) .or (.ident(.string(name))=0))
     ; if you get this error then you've set a boolean config option to something other than 0 or 1
     .error .sprintf("Boolean Option `%s` was set to a value other than 0 or 1", .string(name))
@@ -22,9 +25,7 @@
 .endmacro
 
 .macro num_option name, default
-; Dumb work around to check if something is numeric
-.local Num, DefaultVal
-Num = 123
+.local DefaultVal
   .ifnblank default
   DefaultVal .set default
   .else
@@ -32,11 +33,8 @@ Num = 123
   .endif
   .if .not .defined(.ident(.string(name)))
     .ident(.string(name)) .set DefaultVal
-    ; Check if its numeric
-    ; match only checks that the types are the same between the two tokens.
-  .elseif .not ( .match ( {.ident(.string(name))}, Num ) )
-    ; if you get this error then you've set a numeric config option to something other than a number
-    .error .sprintf("Number Option `%s` was set to a non numeric value %d", .string(name), .ident(.string(name)))
+  .elseif .not .const(.ident(.string(name)))
+    .error .sprintf("Number Option `%s` must be a numeric constant", .string(name))
     .fatal "Invalid Options selected"
   .endif
 .endmacro
@@ -47,6 +45,10 @@ bool_option USE_SMB2J_FEATURES
 bool_option MULTIPLE_POWERUPS_ON_SCREEN
 bool_option USE_LOOPING_ANIM_CYCLE
 bool_option USE_MOUSE_SUPPORT
+
+bool_option LEVEL_FORMAT_LDTK
+num_option HUD_MODE
+num_option USER_SRAM_SIZE
 
 
 num_option MOUSE_CONFIG_CONTROLLER_SIZE
@@ -67,6 +69,9 @@ bool_option USE_BHOP_MUSIC
 bool_option USE_VANILLA_SFX
 bool_option USE_CUSTOM_ENGINE_SFX
 num_option DPCM_BANK_COUNT
+num_option VANILLA_SRAM_RESERVE
+num_option FAMISTUDIO_SRAM_RESERVE, 139
+num_option BHOP_SRAM_RESERVE, 292
 
 bool_option DEBUG_WORLD_SELECT
 bool_option PRINT_METASPRITE_IDS
@@ -99,6 +104,31 @@ bool_option DEBUG_DISPLAY_VISUAL_FRAMETIME
   .error "Must select at least one audio engine. Either VANILLA or FAMISTUDIO"
   .fatal "Invalid Options selected"
 .endif
+
+.if LEVEL_FORMAT_LDTK
+  .error "LEVEL_FORMAT_LDTK=1: LDtk runtime not yet implemented"
+  .fatal "Invalid Options selected"
+.endif
+
+.if HUD_MODE < 0 .or HUD_MODE > 3
+  .error "HUD_MODE must be in the range 0 to 3 (TOP, BOTTOM, SPRITE, NONE)"
+  .fatal "Invalid Options selected"
+.elseif HUD_MODE <> 0
+  .error "HUD_MODE: BOTTOM, SPRITE, and NONE are not yet implemented"
+  .fatal "Invalid Options selected"
+.endif
+
+.macro sram_size_option name
+  .if name < 0 .or name > $2000
+    .error .sprintf("%s must be in the range 0 to 8192 bytes", .string(name))
+    .fatal "Invalid Options selected"
+  .endif
+.endmacro
+
+sram_size_option USER_SRAM_SIZE
+sram_size_option VANILLA_SRAM_RESERVE
+sram_size_option FAMISTUDIO_SRAM_RESERVE
+sram_size_option BHOP_SRAM_RESERVE
 
 ; Force disable mouse curose if mouse is not enabled
 .if USE_MOUSE_SUPPORT = 0 && MOUSE_DISPLAY_CURSOR <> 0

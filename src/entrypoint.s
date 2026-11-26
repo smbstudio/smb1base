@@ -52,7 +52,12 @@ _COMMON_DEFINE_SEGMENTS = 1
 
 .include "common.s"
 .include "collision.s"
-.include "level_tiles.s"
+.include "level_common.s"
+.if LEVEL_FORMAT_LDTK
+.include "level_ldtk.s"
+.else
+.include "level_vanilla.s"
+.endif
 .include "reset.s"
 .include "game.s"
 

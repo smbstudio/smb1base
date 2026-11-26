@@ -115,7 +115,7 @@ RESERVE BhopTempo, 2
 .endif
 
 .define BHOP_PLAYER_SEGMENT "AUDIODRV"
-.define BHOP_RAM_SEGMENT "SRAM"
+.define BHOP_RAM_SEGMENT "AUDIO_SRAM"
 .define BHOP_ZP_SEGMENT "MUSIC_ZEROPAGE_OVERLAY"
 
 .proc bhop_apply_music_bank

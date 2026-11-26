@@ -23,9 +23,11 @@ RESERVE PauseModeFlag, 1
 
 
 .if ::USE_SMB2J_FEATURES
+AUDIO_SRAM_RESERVE = VANILLA_SRAM_RESERVE
 .include "vanilla_music_smb2j.s"
 
 .elseif ::USE_VANILLA_MUSIC
+AUDIO_SRAM_RESERVE = VANILLA_SRAM_RESERVE
 .include "vanilla_music.s"
 
 .else
@@ -43,11 +45,13 @@ RESERVE PauseModeFlag, 1
 .endproc
 
 .if ::USE_FAMISTUDIO_MUSIC
+AUDIO_SRAM_RESERVE = FAMISTUDIO_SRAM_RESERVE
 .include "driver_famistudio.s"
 .include "custom_music.s"
 .endif
 
 .if ::USE_BHOP_MUSIC
+AUDIO_SRAM_RESERVE = BHOP_SRAM_RESERVE
 .include "driver_bhop.s"
 .include "custom_music.s"
 .endif
@@ -56,6 +60,8 @@ RESERVE PauseModeFlag, 1
 
 .endif
 
+.import __AUDIO_SRAM_SIZE__
+.assert __AUDIO_SRAM_SIZE__ <= AUDIO_SRAM_RESERVE, lderror, "Audio driver SRAM use exceeds its SRAM reserve"
 
 .proc AudioInit
   lda #0
