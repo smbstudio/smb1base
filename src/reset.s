@@ -88,7 +88,6 @@ DelayACycles:
   bpl :-
 : lda PPUSTATUS
   bpl :-
-  ldy #ColdBootOffset          ;load default cold boot pointer
   ldx #$05                     ;this is where we check for a warm boot
 WBootCheck:
   lda TopScoreDisplay,x        ;check each score digit in the top score
@@ -99,8 +98,13 @@ WBootCheck:
   lda WarmBootValidation       ;second checkpoint, check to see if 
   cmp #$a5                     ;another location has a specific value
   bne ColdBoot   
-  ldy #WarmBootOffset          ;if passed both, load warm boot pointer
+  ldx #>DisplayDigits          ;if passed both, load warm boot pointer
+  ldy #WarmBootOffset
+  jmp DoBoot
 ColdBoot:
+  ldx #>WarmBootValidation     ;load default cold boot pointer
+  ldy #ColdBootOffset
+DoBoot:
   jsr InitializeMemory         ;clear memory using pointer in Y
   sta SND_DELTA_REG+1          ;reset delta counter load register
   sta OperMode                 ;reset primary mode of operation
@@ -147,8 +151,10 @@ FinializeMarioInit:
 .endproc
 
 ;-------------------------------------------------------------------------------------
-;$00 - vram buffer address table low
-;$01 - vram buffer address table high
+; Pointer based upload straight from ROM, only used for the title screen with rendering off.
+; Packet format: addr hi, addr lo, flags|len (d7 = +32, d6 = fill, d0-5 = length), data
+;$00 - data address low
+;$01 - data address high
 
 .segment "CODE"
 
@@ -266,16 +272,24 @@ ScreenOff:
   ; sta PPUSCROLL
   sta OAMADDR          ;reset spr-ram address register
 
-  ldx VRAM_Buffer_AddrCtrl  ;load control for pointer to buffer contents
+  ldx VRAM_Buffer_AddrCtrl  ;load control for which list to upload
   cpx #TitleScreenDataOffset
-  bne :+
+  bne UploadBuffer
     BankPRGA #.bank(TITLE)
+    lda #<TitleScreenData
+    sta NmiR0
+    lda #>TitleScreenData
+    sta NmiR1
+    jsr UpdateScreen
+    jmp UploadDone
+UploadBuffer:
+  ldy #0                    ;offset of the queue
+  cpx #VramSrcColumn
+  bne :+
+    ldy VramColumnStart
   :
-  lda VRAM_AddrTable_Low,x  ;set indirect at $00 to pointer
-  sta NmiR0
-  lda VRAM_AddrTable_High,x
-  sta NmiR1
-  jsr UpdateScreen  ;update screen with buffer contents
+  jsr VramDrain
+UploadDone:
 
   lda HorizontalScroll
   sta IrqNewScroll
@@ -310,18 +324,21 @@ SkipSprite0:
 .endif
   jsr OAMandReadJoypad
 
-  ldy #$00
-  ldx VRAM_Buffer_AddrCtrl  ;check for usage of $0341
+  ; Discard the list that was just uploaded
+  ldx VRAM_Buffer_AddrCtrl
   cpx #VramSrcColumn
-  bne InitBuffer
-    iny                       ;get offset based on usage
-InitBuffer:
-  ldx VRAM_Buffer_Offset,y
-  lda #$00                  ;clear buffer header at last location
-  sta VRAM_Buffer1_Offset,x        
-  sta VRAM_Buffer1,x
-  sta VRAM_Buffer_AddrCtrl  ;reinit address control to $0301
-
+  bne ResetQueue
+    ldy VramColumnStart
+    lda #0
+    sta VramBuffer,y
+    jsr ResetVramColumn
+    beq ResetSource         ;unconditional
+ResetQueue:
+  lda #0
+  VramQueueReset
+ResetSource:
+  lda #VramSrcQueue
+  VramSelectSourceA         ;reinit address control to the queue
 
 .if ::USE_MOUSE_SUPPORT
   ; This needs to happen later in NMI but before Audio as custom music can use the Nmi temp variables
@@ -362,21 +379,124 @@ OnCooldown:
 
 .endproc
 
-; Rarely read data lives in FIXED to leave room in PRGLow
 .segment "FIXED"
 ;-------------------------------------------------------------------------------------
-;$00 - vram buffer address table low, also used for pseudorandom bit
-;$01 - vram buffer address table high
+;$00 - saved stack pointer
+.proc VramDrain
+  tsx
+  stx NmiR0
+  dey                       ;the first PLA pre-increments
+  tya
+  tax
+  txs
+  bit PPUSTATUS             ;reset flip-flop
+  lda Mirror_PPUCTRL
+  and #%11111011            ;+1 increment
+  sta Mirror_PPUCTRL        ;the mirror keeps its name table bit
+  and #%11111110
+  tax                       ;X = PPUCTRL for +1, name table 0
+  ora #%00000100
+  tay                       ;Y = PPUCTRL for +32
+::VramNextPacket:
+  pla                       ;addr hi
+  beq Done
+  bmi Vertical
+  stx PPUCTRL
+  sta PPUADDR
+  pla
+  sta PPUADDR
+  rts                       ;into VramBufChain or VramFillStub
+Vertical:
+  sty PPUCTRL
+  sta PPUADDR
+  pla
+  sta PPUADDR
+  rts
+Done:
+  ldx NmiR0
+  txs
+  sta PPUSCROLL             ;A is 0 here
+  sta PPUSCROLL
+  rts
+.endproc
 
+VramBufChain:
+.repeat 64
+  pla
+  sta PPUDATA
+.endrepeat
+  jmp VramNextPacket
+
+VramFillStub:
+  pla                       ;fill value
+  rts                       ;into VramFillChain
+
+VramFillChain:
+.repeat 64
+  sta PPUDATA
+.endrepeat
+  jmp VramNextPacket
+
+;-------------------------------------------------------------------------------------
+; Empties both lists. Returns A = 0.
+VramReset:
+  lda #0
+  VramQueueReset
+  FALLTHROUGH ResetVramColumn
+ResetVramColumn:
+  lda #VRAM_COLUMN_BASE
+  sta VramColumnIndex
+  sta VramColumnStart
+  lda #0
+  sta VramBuffer+VRAM_COLUMN_BASE
+  rts
+
+;-------------------------------------------------------------------------------------
+; Handle prebuilt ROM vram updates by copying them into the VRAM popslide buffer
+; instead of pointing NMI at these ROM addresses.
+;$M0, $M1 - table address
+.proc VramLoadRomSource
+  ldx VRAM_Buffer_AddrCtrl
+  beq Done                  ;queue
+  cpx #VramSrcColumn
+  beq Done
+  cpx #TitleScreenDataOffset
+  beq Done                  ;uploaded straight from ROM
+  lda VRAM_AddrTable_Low,x
+  sta M0
+  lda VRAM_AddrTable_High,x
+  sta M1
+  ldy VRAM_LengthTable,x
+  dey                       ;offset of the terminator
+  tya
+  pha
+    lda #0
+    sta VramQueue           ;the list is empty until its first byte is written
+  CopyLoop:
+      lda (M0),y
+      sta VramQueue,y
+      dey
+      bne CopyLoop
+    lda (M0),y
+    sta VramQueue
+  pla
+  sta VramQueueIndex
+  lda #VramSrcQueue
+  VramSelectSourceA
+Done:
+  rts
+.endproc
+
+; Indexed by source id. Ids that are not ROM tables are never looked up.
 .define VRAM_AddrTable \
-      VRAM_Buffer1, \
+      0, \
       WaterPaletteData, \
       GroundPaletteData, \
       UndergroundPaletteData, \
       CastlePaletteData, \
-      VRAM_Buffer1_Offset, \
-      VRAM_Buffer2, \
-      VRAM_Buffer2, \
+      0, \
+      0, \
+      0, \
       BowserPaletteData, \
       DaySnowPaletteData, \
       NightSnowPaletteData, \
@@ -387,23 +507,37 @@ OnCooldown:
       PrincessSaved1, \
       PrincessSaved2, \
       WorldSelectMessage1, \
-      WorldSelectMessage2, \
-      TitleScreenData
+      WorldSelectMessage2
 
 clabel VRAM_AddrTable_Low
 clabel VRAM_AddrTable_High
 VRAM_AddrTable_Low: .lobytes VRAM_AddrTable
 VRAM_AddrTable_High: .hibytes VRAM_AddrTable
 
-clabel VRAM_Buffer_Offset
-VRAM_Buffer_Offset:
-  .byte VRAM_Buffer1_PtrOffset, VRAM_Buffer2_PtrOffset
+VRAM_LengthTable:
+  .byte 0
+  .byte GroundPaletteData - WaterPaletteData
+  .byte UndergroundPaletteData - GroundPaletteData
+  .byte CastlePaletteData - UndergroundPaletteData
+  .byte DaySnowPaletteData - CastlePaletteData
+  .byte 0, 0, 0
+  .byte MarioThanksMessage - BowserPaletteData
+  .byte NightSnowPaletteData - DaySnowPaletteData
+  .byte MushroomPaletteData - NightSnowPaletteData
+  .byte BowserPaletteData - MushroomPaletteData
+  .byte LuigiThanksMessage - MarioThanksMessage
+  .byte MushroomRetainerSaved - LuigiThanksMessage
+  .byte PrincessSaved1 - MushroomRetainerSaved
+  .byte PrincessSaved2 - PrincessSaved1
+  .byte WorldSelectMessage1 - PrincessSaved2
+  .byte WorldSelectMessage2 - WorldSelectMessage1
+  .byte RomPacketsEnd - WorldSelectMessage2
 
 ;-------------------------------------------------------------------------------------
 ;VRAM BUFFER DATA FOR LOCATIONS IN PRG-ROM
 
 WaterPaletteData:
-  .byte $3f, $00, $20
+  VramBuf $3f00, $20
   .byte $0f, $15, $12, $25  
   .byte $0f, $3a, $1a, $0f
   .byte $0f, $30, $12, $0f
@@ -415,7 +549,7 @@ WaterPaletteData:
   .byte $00
 
 GroundPaletteData:
-  .byte $3f, $00, $20
+  VramBuf $3f00, $20
   .byte $0f, $29, $1a, $0f
   .byte $0f, $36, $17, $0f
   .byte $0f, $30, $21, $0f
@@ -427,7 +561,7 @@ GroundPaletteData:
   .byte $00
 
 UndergroundPaletteData:
-  .byte $3f, $00, $20
+  VramBuf $3f00, $20
   .byte $0f, $29, $1a, $09
   .byte $0f, $3c, $1c, $0f
   .byte $0f, $30, $21, $1c
@@ -439,7 +573,7 @@ UndergroundPaletteData:
   .byte $00
 
 CastlePaletteData:
-  .byte $3f, $00, $20
+  VramBuf $3f00, $20
   .byte $0f, $30, $10, $00
   .byte $0f, $30, $10, $00
   .byte $0f, $30, $16, $00
@@ -451,70 +585,72 @@ CastlePaletteData:
   .byte $00
 
 DaySnowPaletteData:
-  .byte $3f, $00, $04
+  VramBuf $3f00, $04
   .byte $22, $30, $00, $10
   .byte $00
 
 NightSnowPaletteData:
-  .byte $3f, $00, $04
+  VramBuf $3f00, $04
   .byte $0f, $30, $00, $10
   .byte $00
 
 MushroomPaletteData:
-  .byte $3f, $00, $04
+  VramBuf $3f00, $04
   .byte $22, $27, $16, $0f
   .byte $00
 
 BowserPaletteData:
-  .byte $3f, $14, $04
+  VramBuf $3f14, $04
   .byte $0f, $1a, $30, $27
   .byte $00
 
 MarioThanksMessage:
-  .byte $25, $48, $10
+  VramBuf $2548, $10
   .byte "THANK YOU MARIO!"
   .byte $00
 
 LuigiThanksMessage:
-  .byte $25, $48, $10
+  VramBuf $2548, $10
   .byte "THANK YOU LUIGI!"
   .byte $00
 
 MushroomRetainerSaved:
-  .byte $25, $c5, $16
+  VramBuf $25c5, $16
   .byte "BUT OUR PRINCESS IS IN"
-  .byte $26, $05, $0f
+  VramBuf $2605, $0f
   .byte "ANOTHER CASTLE!"
   .byte $00
 
 PrincessSaved1:
-  .byte $25, $a7, $13
+  VramBuf $25a7, $13
   .byte "YOUR QUEST IS OVER."
   .byte $00
 
 PrincessSaved2:
-  .byte $25, $e3, $1b
+  VramBuf $25e3, $1b
   .byte "WE PRESENT YOU A NEW QUEST."
   .byte $00
 
 WorldSelectMessage1:
-  .byte $26, $4a, $0d
+  VramBuf $264a, $0d
   .byte "PUSH BUTTON B"
   .byte $00
 
 WorldSelectMessage2:
-  .byte $26, $88, $11
+  VramBuf $2688, $11
   .byte "TO SELECT A WORLD"
   .byte $00
+RomPacketsEnd:
 
 ;-------------------------------------------------------------------------------------
 .segment "FIXED"
 ;$06 - RAM address low
 ;$07 - RAM address high
+; Clears RAM from the address X:Y (page:offset, inclusive) down to $0000, leaving the
+; sprite page and page 1 alone.
 InitializeMemoryRAMLo = R6
 InitializeMemoryRAMHi = R7
 .proc InitializeMemory
-  ldx #$07          ;set initial high byte to $0700-$07ff
   lda #$00          ;set initial low byte to start of page (at $00 of page)
   sta InitializeMemoryRAMLo
 InitPageLoop:
@@ -522,11 +658,8 @@ InitPageLoop:
 InitByteLoop:
       cpx #2            ; jroweboy: don't clear sprite ram
       beq SkipByte
-      cpx #$01          ;check to see if we're on the stack ($0100-$01ff)
-      bne InitByte      ;if not, go ahead anyway
-      cpy #<StackClear  ;otherwise, check to see if we're at $0160-$01ff
-      bcs SkipByte      ;if so, skip write
-InitByte:
+      cpx #$01          ; VRAM buffer and stack
+      beq SkipByte
       sta (InitializeMemoryRAMLo),y       ;otherwise, initialize byte with current low byte in Y
 SkipByte:
       dey
@@ -540,8 +673,7 @@ SkipByte:
   lda #1
   sta mouse_mask
 .endif
-  lda #0
-  rts
+  jmp VramReset     ;drop queued uploads. returns A = 0
 .endproc
 
 .if DEBUG_ADD_EXTRA_LAG

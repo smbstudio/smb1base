@@ -139,40 +139,11 @@ MusicDataHigh := MusicData+1
 .endif
 
 
+.segment "VRAMBUF"
+
+RESERVE VramBuffer, VRAM_BUFFER_SIZE
+
 .segment "SHORTRAM"
-
-
-RESERVE PauseSoundQueue, 1
-RESERVE AreaMusicQueue, 1
-RESERVE EventMusicQueue, 1
-RESERVE NoiseSoundQueue, 1
-RESERVE Square2SoundQueue, 1
-RESERVE Square1SoundQueue, 1
-
-
-RESERVE   SpriteLocalTemp, 4
-Local_eb := SpriteLocalTemp + 0
-Local_ec := SpriteLocalTemp + 1
-Local_ed := SpriteLocalTemp + 2
-; RESERVEZP Local_ee ; unused
-Local_ef := SpriteLocalTemp + 3
-
-RESERVE FlagpoleFNum_Y_Pos, 1
-RESERVE FlagpoleFNum_YMFDummy, 1
-RESERVE FlagpoleScore, 1
-
-RESERVE FloateyNum_Control, 7
-RESERVE FloateyNum_X_Pos, 7
-RESERVE FloateyNum_Y_Pos, 7
-
-RESERVE ShellChainCounter, 7
-RESERVE FloateyNum_Timer, 8
-RESERVE DigitModifier, 6
-
-
-StackClear = DigitModifier+6
-
-; DON'T CLEAR PAST HERE
 
 RESERVE IrqNewScroll, 1
 RESERVE IrqPPUCTRL, 1
@@ -205,12 +176,37 @@ RESERVE Block_Buffer_2, 208
 RESERVE BlockBufferColumnPos, 1
 RESERVE MetatileBuffer, 13
 
-RESERVE VRAM_Buffer1_Offset, 1
-RESERVE VRAM_Buffer1, 84
-RESERVE VRAM_Buffer2_Offset, 1
-RESERVE VRAM_Buffer2, 34
-VRAM_Buffer1_PtrOffset = 0
-VRAM_Buffer2_PtrOffset = VRAM_Buffer2_Offset - VRAM_Buffer1_Offset
+; Next free offset of each list in VramBuffer, and where the column list is uploaded from
+RESERVE VramQueueIndex, 1
+RESERVE VramColumnIndex, 1
+RESERVE VramColumnStart, 1
+
+RESERVE PauseSoundQueue, 1
+RESERVE AreaMusicQueue, 1
+RESERVE EventMusicQueue, 1
+RESERVE NoiseSoundQueue, 1
+RESERVE Square2SoundQueue, 1
+RESERVE Square1SoundQueue, 1
+
+
+RESERVE   SpriteLocalTemp, 4
+Local_eb := SpriteLocalTemp + 0
+Local_ec := SpriteLocalTemp + 1
+Local_ed := SpriteLocalTemp + 2
+; RESERVEZP Local_ee ; unused
+Local_ef := SpriteLocalTemp + 3
+
+RESERVE FlagpoleFNum_Y_Pos, 1
+RESERVE FlagpoleFNum_YMFDummy, 1
+RESERVE FlagpoleScore, 1
+
+RESERVE FloateyNum_Control, 7
+RESERVE FloateyNum_X_Pos, 7
+RESERVE FloateyNum_Y_Pos, 7
+
+RESERVE ShellChainCounter, 7
+RESERVE FloateyNum_Timer, 8
+RESERVE DigitModifier, 6
 
 RESERVE BowserBodyControls, 1
 RESERVE BowserFeetCounter, 1

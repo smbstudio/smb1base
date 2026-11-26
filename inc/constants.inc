@@ -177,14 +177,14 @@ MUSHROOM_BOX_METATILE   = $c0
 FIREFLOWER_BOX_METATILE = $c1
 
 .enum
-  VRAM_Buffer1Offset
+  VramSrcQueue
   WaterPaletteDataOffset
   GroundPaletteDataOffset
   UndergroundPaletteDataOffset
   CastlePaletteDataOffset
-  VRAM_Buffer1_OffsetOffset
-  VRAM_Buffer2Offset
-  VRAM_Buffer2Offset2
+  VramSrcUnused1
+  VramSrcColumn
+  VramSrcUnused2
   BowserPaletteDataOffset
   DaySnowPaletteDataOffset
   NightSnowPaletteDataOffset

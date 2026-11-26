@@ -13,9 +13,13 @@ GoToNextFrameImmediately:
   pla
   cmp NmiSkipped
   beq IdleLoop
+  lda VramQueue
+  ora VRAM_Buffer_AddrCtrl
+  bne IdleLoop              ;upload pending data before catching up
   ; We lagged this frame, so skip sprites next frame for faster processing
   lda #1
   sta ShouldSkipDrawSprites
+  dec NmiDisable            ;NMIs during the catch up are lag frames
   jmp GoToNextFrameImmediately
 .endproc
 
@@ -81,6 +85,7 @@ NoDecTimers:
 .endif
 
 PauseSkip:
+  jsr VramLoadRomSource
   lda #0
   sta NmiDisable
   rts
@@ -235,8 +240,7 @@ UpdScrollVar:
         lda ScrollThirtyTwo
         sbc #$20                   ;otherwise subtract $20 to set appropriately
         sta ScrollThirtyTwo        ;and store
-        lda #$00                   ;reset vram buffer offset used in conjunction with
-        VramColumnReset            ;level graphics buffer
+        jsr ResetVramColumn        ;reset the level graphics list
   RunParser:
         farcall AreaParserTaskHandler, jmp  ;update the name table with more level graphics
 ExitEng:
@@ -545,9 +549,6 @@ ExitFlagP: rts ; TODO check this RTS can be removed
 ColorRotatePalette:
        .byte $27, $27, $27, $17, $07, $17
 
-BlankPalette:
-       .byte $3f, $0c, $04, $ff, $ff, $ff, $ff, $00
-
 ;used based on area type
 Palette3Data:
        .byte $0f, $07, $12, $0f 
@@ -561,33 +562,29 @@ ColorRotation:
               bne ExitColorRot         ;branch if not set to zero to do this every eighth frame
               ldx VramQueueIndex       ;check vram buffer offset
               VramSkipIfQueueAtLimitX VRAM_LIMIT_COLOR_ROTATE, ExitColorRot ;leave if over 48 bytes
-              tay                      ;otherwise use frame counter's 3 LSB as offset here
-GetBlankPal:  lda BlankPalette,y       ;get blank palette for palette 3
-              sta VramQueue,x          ;store it in the vram buffer
-              inx                      ;increment offsets
-              iny
-              cpy #$08
-              bcc GetBlankPal          ;do this until all bytes are copied
-              ldx VramQueueIndex       ;get current vram buffer offset
-              lda #$03
-              sta R0                   ;set counter here
+              lda #$00
+              sta VramQueue+8,x        ;new terminator first
+              lda #$0c
+              sta VramQueue+1,x
+              VramStoreEntry 4, VramQueue+2, x
               lda AreaType             ;get area type
               asl                      ;multiply by 4 to get proper offset
               asl
               tay                      ;save as offset here
-GetAreaPal:   lda Palette3Data,y       ;fetch palette to be written based on area type
-              sta VramQueue+3,x        ;store it to overwrite blank palette in vram buffer
-              iny
-              inx
-              dec R0                   ;decrement counter
-              bpl GetAreaPal           ;do this until the palette is all copied
-              ldx VramQueueIndex       ;get current vram buffer offset
+              lda Palette3Data,y       ;fetch palette to be written based on area type
+              sta VramQueue+4,x
+              lda Palette3Data+2,y
+              sta VramQueue+6,x
+              lda Palette3Data+3,y
+              sta VramQueue+7,x
               ldy ColorRotateOffset    ;get color cycling offset
               lda ColorRotatePalette,y
-              sta VramQueue+4,x        ;get and store current color in second slot of palette
-              lda VramQueueIndex
-              clc                      ;add seven bytes to vram buffer offset
-              adc #$07
+              sta VramQueue+5,x        ;get and store current color in second slot of palette
+              lda #$3f
+              sta VramQueue,x          ;publish
+              txa
+              clc                      ;add eight bytes to vram buffer offset
+              adc #$08
               sta VramQueueIndex
               inc ColorRotateOffset    ;increment color cycling offset
               lda ColorRotateOffset
@@ -626,15 +623,17 @@ PrimaryGameSetup:
   sta NumberofLives           ;give each player three lives
   sta OffScr_NumberofLives
 SecondaryGameSetup:
-  lda #$00
+  jsr VramReset             ;returns A = 0
   sta DisableScreenFlag     ;enable screen output
 .if ::USE_SMB2J_FEATURES
   sta FlagpoleMusicFlag
   sta WindFlag
 .endif
-  tay
-ClearVRLoop: sta VRAM_Buffer1-1,y      ;clear buffer at $0300-$03ff
-  iny
+; Vanilla cleared 256 bytes from the old VRAM buffer, which also reset these variables
+SETUP_CLEAR_SIZE = EnemyOffscrBitsMasked + 6 - BowserBodyControls
+  ldy #SETUP_CLEAR_SIZE
+ClearVRLoop: sta BowserBodyControls-1,y
+  dey
   bne ClearVRLoop
   sta GameTimerExpiredFlag  ;clear game timer exp flag
   sta DisableIntermediate   ;clear skip lives display flag
@@ -678,6 +677,7 @@ InitializeGame:
 .if ::USE_SMB2J_FEATURES
   farcall InitWindLeaves
 .endif
+  ldx #>WorldSelectNumber
   ldy #<WorldSelectNumber  ;clear all memory as in initialization procedure,
   jsr InitializeMemory     ;but this time, clear only as far as $076f
   jsr AudioClear
@@ -686,6 +686,7 @@ InitializeGame:
   jsr LoadAreaPointer
 
 InitializeArea:
+  ldx #>SecondaryMsgCounter
   ldy #<SecondaryMsgCounter                 ;clear all memory again, only as far as $074b
   jsr InitializeMemory     ;this is only necessary in game mode
   ldx #FRAME_TIMER_COUNT
@@ -864,14 +865,21 @@ IncWorldSel:
   sta WorldSelectNumber       ;store as current world select number
   jsr GoContinue
 UpdateShroom:
+  lda #$00                    ;empty the list while it is replaced
+  sta VramQueue
+  ldx #$05
+WSelectLoop:
   lda WSelectBufferTemplate,x ;write template for world select in vram buffer
-  sta VramQueueIndex,x        ;do this until all bytes are written
-  inx
-  cpx #$06
-  bmi UpdateShroom
+  sta VramQueue,x
+  dex
+  bne WSelectLoop             ;do this until all but the first byte are written
   ldy WorldNumber             ;get world number from variable and increment for
   iny                         ;proper display, and put in blank byte before
-  sty VramQueue+3             ;null terminator
+  sty VramQueue+4             ;null terminator
+  lda WSelectBufferTemplate
+  sta VramQueue               ;publish
+  lda #$05
+  sta VramQueueIndex
 NullJoypad:
   lda #$00                    ;clear joypad bits for player 1
   sta SavedJoypad1Bits
@@ -923,7 +931,8 @@ GoContinue:
 .endproc
 clabel WSelectBufferTemplate
 WSelectBufferTemplate:
-      .byte $04, $20, $73, $01, $00, $00
+      VramBuf $2073, 1
+      .byte $00, $00
 
 
 
@@ -1247,21 +1256,27 @@ OutputNumbers:
   cmp #$06
   bcs ExitOutputN
   pha                      ;save incremented value to stack for now and
-    asl                      ;shift to left and use as offset
+    asl                      ;multiply by 4 and use as offset
+    asl
     tay
     ldx VramQueueIndex       ;get current buffer pointer
-    lda #$20                 ;put at top of screen by default
-    cpy #$00                 ;are we writing top score on title screen?
-    bne SetupNums
-    lda #$22                 ;if so, put further down on the screen
-SetupNums:
+    stx R2                   ;elsewhere for now
+    txa
+    clc
+    adc StatusBarData+1,y    ;the new terminator goes after the header and digits
+    adc #$04
+    tax
+    lda #$00
     sta VramQueue,x
-    lda StatusBarData,y      ;write low vram address and length of thing
+    ldx R2
+    lda StatusBarData,y      ;write low vram address and entry word
     sta VramQueue+1,x        ;we're printing to the buffer
-    lda StatusBarData+1,y
+    lda StatusBarData+2,y
     sta VramQueue+2,x
+    lda StatusBarData+3,y
+    sta VramQueue+3,x
+    lda StatusBarData+1,y
     sta R3                   ;save length byte in counter
-    stx R2                   ;and buffer pointer elsewhere for now
   pla                      ;pull original incremented value from stack
   tax
   lda StatusBarOffset,x    ;load offset to value we want to write
@@ -1271,16 +1286,38 @@ SetupNums:
   ldx R2 
 DigitPLoop:
   lda DisplayDigits,y      ;write digits to the buffer
-  sta VramQueue+3,x    
+  sta VramQueue+4,x    
   inx
   iny
   dec R3                   ;do this until all the digits are written
   bne DigitPLoop
-  lda #$00                 ;put null terminator at end
-  sta VramQueue+3,x
-  inx                      ;increment buffer pointer by 3
-  inx
-  inx
+  txa
+  clc                      ;increment buffer pointer by 4
+  adc #$04
+  tax
+  ldy R2
+  lda VramQueue+1,y        ;check which row of the screen this is for
+  cmp #$f0
+  beq TopScoreRow
+    cmp #$62
+    bne ScoreRowDone
+    lda VramQueue+4,y        ;zero suppress the highest digit of a score
+    bne :+
+      lda #$24
+      sta VramQueue+4,y
+    :
+ScoreRowDone:
+    lda #$20                 ;put at top of screen by default
+    bne Publish              ;unconditional
+TopScoreRow:
+  lda VramQueue+4,y
+  bne :+
+    lda #$24
+    sta VramQueue+4,y
+  :
+  lda #$22                 ;top score on the title screen goes further down
+Publish:
+  sta VramQueue,y
   stx VramQueueIndex       ;store it in case we want to use it again
 ExitOutputN:
   rts
@@ -1291,14 +1328,18 @@ ExitOutputN:
 ;$02 - used as temp vram offset
 ;$03 - used to store length of status bar number
 
-;status bar name table offset and length data
+;status bar name table offset, length and entry word
+.macro StatusRow lo, len
+  .byte lo, len
+  .word VramBufEntry(len)
+.endmacro
 StatusBarData:
-  .byte $f0, $06 ; top score display on title screen
-  .byte $62, $06 ; player score
-  .byte $62, $06
-  .byte $6d, $02 ; coin tally
-  .byte $6d, $02
-  .byte $7a, $03 ; game timer
+  StatusRow $f0, 6 ; top score display on title screen
+  StatusRow $62, 6 ; player score
+  StatusRow $62, 6
+  StatusRow $6d, 2 ; coin tally
+  StatusRow $6d, 2
+  StatusRow $7a, 3 ; game timer
 
 StatusBarOffset:
   .byte TopScoreDisplay + TopScoreLastIndex - DisplayDigits + 1

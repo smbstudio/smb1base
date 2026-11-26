@@ -3,9 +3,12 @@
 
 ; RAM
 .segment "ZEROPAGE"  :mem $0000 :size $0100 :zp
-.segment "SHORTRAM"  :mem $0100 :size $0100 :bss
+; The VRAM upload buffer. The rest of page 1 ($01a0-$01ff) is the stack.
+.segment "VRAMBUF"   :mem $0100 :size $00a0 :bss
 .segment "OAM"       :mem $0200 :size $0100 :bss
-.segment "BSS"       :mem $0300 :size $0500 :bss
+.segment "BSS"       :mem $0300 :size $04a8 :bss
+; RAM that no memory clear may touch, including the self modifying code.
+.segment "SHORTRAM"  :mem $07a8 :size $0058 :bss
 ; Exclude user save data from all engine SRAM allocations.
 .segment "SRAM"      :mem $6000 + USER_SRAM_SIZE :size $2000 - USER_SRAM_SIZE :bss
 ; Give audio its own segment so its actual SRAM use can be checked at link time.

@@ -135,27 +135,26 @@ WriteBottomStatusLine:
 
   jsr GetSBNybbles        ;write player's score and coin tally to screen
   ldx VramQueueIndex
-  lda #$20                ;write address for world-area number on screen
-  sta VramQueue,x
-  lda #$73
+  lda #$00                ;new terminator first
+  sta VramQueue+7,x
+  lda #$73                ;write address for world-area number on screen
   sta VramQueue+1,x
-  lda #$03                ;write length for it
-  sta VramQueue+2,x
+  VramStoreEntry 3, VramQueue+2, x
   ldy WorldNumber         ;first the world number
   iny
   tya
-  sta VramQueue+3,x
-  lda #$28                ;next the dash
   sta VramQueue+4,x
+  lda #$28                ;next the dash
+  sta VramQueue+5,x
   ldy LevelNumber         ;next the level number
   iny                     ;increment for proper number display
   tya
-  sta VramQueue+5,x    
-  lda #$00                ;put null terminator on
   sta VramQueue+6,x
-  txa                     ;move the buffer offset up by 6 bytes
+  lda #$20                ;publish
+  sta VramQueue,x
+  txa                     ;move the buffer offset up by 7 bytes
   clc
-  adc #$06
+  adc #$07
   sta VramQueueIndex
   jmp IncSubtask
 
@@ -266,6 +265,10 @@ NoTimeUp:
 
 .proc AreaParserTaskControl
   inc DisableScreenFlag     ;turn off screen
+  lda #$00                  ;the set is too big for the column region, and the queue
+  sta VramBuffer            ;is empty here, so build it from the start of the buffer
+  sta VramColumnIndex
+  sta VramColumnStart
   farcall AreaParserTaskLoop
   dec ColumnSets            ;do we need to render more column sets?
   bpl OutputCol
@@ -288,6 +291,8 @@ NoBGColor:
 
 GetPlayerColors:
   ldx VramQueueIndex       ;get current buffer offset
+  lda #$00
+  sta VramQueue+8,x        ;new terminator first
   ldy #$00
   lda CurrentPlayer        ;check which player is on the screen
   beq ChkFiery
@@ -302,29 +307,29 @@ StartClrGet:
   sta R0 
 ClrGetLoop:
   lda PlayerColors,y       ;fetch player colors and store them
-  sta VramQueue+3,x        ;in the buffer
+  sta VramQueue+4,x        ;in the buffer
   iny
   inx
   dec R0 
   bpl ClrGetLoop
-  ldx VramQueueIndex       ;load original offset from before
+  txa                      ;back to the original offset
+  sec
+  sbc #$04
+  tax
   ldy BackgroundColorCtrl  ;if this value is four or greater, it will be set
   bne SetBGColor           ;therefore use it as offset to background color
   ldy AreaType             ;otherwise use area type bits from area offset as offset
 SetBGColor:
   lda BackgroundColors,y   ;to background color instead
-  sta VramQueue+3,x
-  lda #$3f                 ;set for sprite palette address
-  sta VramQueue,x          ;save to buffer
-  lda #$10
+  sta VramQueue+4,x
+  lda #$10                 ;set for sprite palette address
   sta VramQueue+1,x
-  lda #$04                 ;write length byte to buffer
-  sta VramQueue+2,x
-  lda #$00                 ;now the null terminator
-  sta VramQueue+7,x
-  txa                      ;move the buffer pointer ahead 7 bytes
+  VramStoreEntry 4, VramQueue+2, x
+  lda #$3f                 ;publish
+  sta VramQueue,x
+  txa                      ;move the buffer pointer ahead 8 bytes
   clc                      ;in case we want to write anything else later
-  adc #$07
+  adc #$08
 SetVRAMOffset:
   sta VramQueueIndex       ;store as new vram buffer offset
   rts
@@ -380,12 +385,15 @@ IncModeTask_B:
 ClearBuffersDrawIcon:
   lda OperMode               ;check game mode
   bne IncModeTask_B          ;if not title screen mode, leave
-  ldx #$00                   ;otherwise, clear buffer space
+; Vanilla cleared 512 bytes from the old VRAM buffer, which also reset these variables
+ICON_CLEAR_SIZE = HammerEnemyOffset + 2 - BowserBodyControls
+  ldx #$00                   ;A is 0 here
 TScrClear:
-  sta VRAM_Buffer1-1,x
-  sta VRAM_Buffer1-1+$100,x
+  sta BowserBodyControls,x
+  sta BowserBodyControls+ICON_CLEAR_SIZE-$100,x
   dex
   bne TScrClear
+  jsr VramReset
   jsr DrawMushroomIcon       ;draw player select icon
 IncSubtask:
   inc ScreenRoutineTask      ;move onto next task
@@ -394,22 +402,29 @@ IncSubtask:
 ;-------------------------------------------------------------------------------------
 
 cproc DrawMushroomIcon
-  ldy #$07                ;read eight bytes to be read by transfer routine
+  lda #$00                ;empty the list while it is replaced
+  sta VramQueue
+  ldy #$07
 IconDataRead:
   lda MushroomIconData,y  ;note that the default position is set for a
-  sta VramQueueIndex,y    ;1-player game
+  sta VramQueue,y         ;1-player game
   dey
-  bpl IconDataRead
+  bne IconDataRead
   lda NumberOfPlayers     ;check number of players
   beq ExitIcon            ;if set to 1-player game, we're done
   lda #$24                ;otherwise, load blank tile in 1-player position
-  sta VramQueue+3
+  sta VramQueue+4
   lda #$2a                ;then load shroom icon tile in 2-player position
-  sta VramQueue+5
+  sta VramQueue+6
 ExitIcon:
+  lda MushroomIconData    ;publish
+  sta VramQueue
+  lda #$07
+  sta VramQueueIndex
   rts
 MushroomIconData:
-  .byte $07, $22, $49, $83, $2a, $24, $24, $00
+  VramBuf $a249, 3     ;d15 set: vertical
+  .byte $2a, $24, $24, $00
 .endproc
 
 
@@ -429,19 +444,35 @@ Chk2Players:
     iny                      ;otherwise increment offset by one to not print name
 LdGameText:
     ldx GameTextOffsets,y    ;get offset to message we want to print
-    ldy #$00
+    lda GameTextEnds,y
+    sta M0
+    lda #$00                 ;empty the list while it is replaced
+    sta VramQueue
+    lda GameText,x           ;hold back the first byte
+    pha
+      inx
+      ldy #$01
 GameTextLoop:
-    lda GameText,x           ;load message data
-    cmp #$ff                 ;check for terminator
-    beq EndGameText          ;branch to end text if found
-    sta VramQueue,y          ;otherwise write data to buffer
-    inx                      ;and increment increment
-    iny
-    bne GameTextLoop         ;do this for 256 bytes if no terminator found
-EndGameText:
-    lda #$00                 ;put null terminator at end
-    sta VramQueue,y
+        lda GameText,x         ;load message data
+        sta VramQueue,y        ;write data to buffer
+        inx                    ;and increment increment
+        iny
+        cpx M0
+        bne GameTextLoop
+      lda #$00                 ;put null terminator at end
+      sta VramQueue,y
+      sty M1                   ;length of the message
+    pla
+    sta M0
   pla                      ;pull original text number from stack
+  jsr PatchGameText
+  lda M0                   ;publish
+  sta VramQueue
+  lda M1                   ;later queue writes go after the message
+  sta VramQueueIndex
+  rts
+
+PatchGameText:
   tax
   cmp #$04                 ;are we printing warp zone?
   bcs PrintWarpZoneNumbers
@@ -453,18 +484,16 @@ EndGameText:
   cmp #10                  ;more than 9 lives?
   bcc PutLives
   sbc #10                  ;if so, subtract 10 and put a crown tile
-  ; jroweboy: I added +4 to each of these to account for the new position in VRAM Buffer
-  ; because I moved the attribute writes to the start to prevent glitches with that.
   ldy #$9f                 ;next to the difference...strange things happen if
-  sty VramQueue+7+4          ;the number of lives exceeds 19
+  sty VramQueue+LivesCrownPos          ;the number of lives exceeds 19
 PutLives:
-  sta VramQueue+8+4
+  sta VramQueue+LivesCountPos
   ldy WorldNumber          ;write world and level numbers (incremented for display)
   iny                      ;to the buffer in the spaces surrounding the dash
-  sty VramQueue+19+4
+  sty VramQueue+LivesWorldPos
   ldy LevelNumber
   iny
-  sty VramQueue+21+4         ;we're done here
+  sty VramQueue+LivesWorldPos+2        ;we're done here
   rts
 CheckPlayerName:
   lda NumberOfPlayers    ;check number of players
@@ -480,12 +509,20 @@ ChkLuigi:
   lsr
   bcc ExitChkName        ;if mario is current player, do not change the name
     ldy #$04
+    cpx #$fe               ;the top status bar has the name at another position
+    beq TopNameLoop
 NameLoop:
       lda LuigiName,y        ;otherwise, replace "MARIO" with "LUIGI"
-      sta VramQueue+3+8,y
+      sta VramQueue+TimeUpNamePos,y
       dey
       bpl NameLoop           ;do this until each letter is replaced
 ExitChkName:
+  rts
+TopNameLoop:
+  lda LuigiName,y
+  sta VramQueue+TopNamePos,y
+  dey
+  bpl TopNameLoop
   rts
 
 PrintWarpZoneNumbers:
@@ -496,16 +533,15 @@ PrintWarpZoneNumbers:
   ldy #$00
 WarpNumLoop:
     lda WarpZoneNumbers,x  ;print warp zone numbers into the
-    sta VramQueue+27,y     ;placeholders from earlier
+    sta VramQueue+WarpNumberPos,y ;placeholders from earlier
     inx
-    iny                    ;put a number in every fourth space
-    iny
-    iny
-    iny
-    cpy #$0c
+    tya                    ;put a number in the data byte of each pipe packet
+    clc
+    adc #WarpNumberStride
+    tay
+    cpy #WarpNumberStride * 3
     bcc WarpNumLoop
-  lda #$2c               ;load new buffer pointer at end of message
-  jmp SetVRAMOffset
+  rts
 
 
 endcproc
@@ -515,46 +551,75 @@ TopStatusBarLine:
 ; jroweboy: moved the attribute writes first which fixes a glitchy transition between levels.
 ; if the last byte written in nmi is in the attribute tables, it affects the scroll for the
 ; next frame, so this works around it by making sure attributes aren't last.
-  .byte $23, $c0, $7f, $aa ; attribute table data, clears name table 0 to palette 2
-  .byte $23, $c2, $01, $ea ; attribute table data, used for coin icon in status bar
-  .byte $20, $43, $05, "MARIO"
-  .byte $20, $52, $0b, "WORLD  TIME"
-  .byte $20, $68, $05, "0  ", $2e, $29 ; score trailing digit and coin display
-  .byte $ff ; end of data block
+  VramFill $23c0, 63, $aa ; attribute table data, clears name table 0 to palette 2
+  VramBuf $23c2, 1        ; attribute table data, used for coin icon in status bar
+  .byte $ea
+  VramBuf $2043, 5
+TopStatusName:
+  .byte "MARIO"
+  VramBuf $2052, 11
+  .byte "WORLD  TIME"
+  VramBuf $2068, 5
+  .byte "0  ", $2e, $29      ; score trailing digit and coin display
 
 WorldLivesDisplay:
-  .byte $23, $dc, $01, $ba ; attribute table data for crown if more than 9 lives
-  .byte $21, $cd, $07, $24, $24 ; cross with spaces used on
-  .byte $29, $24, $24, $24, $24 ; lives display
-  .byte $21, $4b, $09, "WORLD  - "
-  .byte $22, $0c, $47, $24 ; possibly used to clear time up
-  .byte $ff
+  VramBuf $23dc, 1        ; attribute table data for crown if more than 9 lives
+  .byte $ba
+  VramBuf $21cd, 7        ; cross with spaces used on
+LivesData:
+  .byte $24, $24, $29, $24, $24, $24, $24 ; lives display
+  VramBuf $214b, 9
+LivesWorldData:
+  .byte "WORLD  - "
+  VramFill $220c, 7, $24  ; possibly used to clear time up
 
 TwoPlayerTimeUp:
 ; jroweboy since we reordered the attribute writes to fix a glitchy transition
-; we need to pad out the time up and game over messages to use the same offset
-; for "MARIO" so the two player write text will write over the correct location.
-  .byte $21, $cd, $05, "     "
-  .byte $21, $cd, $05, "MARIO"
+; we need to pad out the time up and game over messages with a blank first packet
+  VramBuf $21cd, 5
+  .byte "     "
+  VramBuf $21cd, 5
+TimeUpName:
+  .byte "MARIO"
 OnePlayerTimeUp:
-  .byte $22, $0c, $07, "TIME UP"
-  .byte $ff
+  VramBuf $220c, 7
+  .byte "TIME UP"
 
 TwoPlayerGameOver:
-  .byte $21, $cd, $05, "     "
-  .byte $21, $cd, $05, "MARIO"
+  VramBuf $21cd, 5
+  .byte "     "
+  VramBuf $21cd, 5
+GameOverName:
+  .byte "MARIO"
 OnePlayerGameOver:
-  .byte $22, $0b, $09, "GAME OVER"
-  .byte $ff
+  VramBuf $220b, 9
+  .byte "GAME OVER"
 
 WarpZoneWelcome:
-  .byte $25, $84, $15, "WELCOME TO WARP ZONE!"
-  .byte $26, $25, $01, $24         ; placeholder for left pipe
-  .byte $26, $2d, $01, $24         ; placeholder for middle pipe
-  .byte $26, $35, $01, $24         ; placeholder for right pipe
-  .byte $27, $d9, $46, $aa         ; attribute data
-  .byte $27, $e1, $45, $aa
-  .byte $ff
+  VramBuf $2584, 21
+  .byte "WELCOME TO WARP ZONE!"
+  VramBuf $2625, 1        ; placeholder for left pipe
+WarpPipeLeft:
+  .byte $24
+  VramBuf $262d, 1        ; placeholder for middle pipe
+WarpPipeMiddle:
+  .byte $24
+  VramBuf $2635, 1        ; placeholder for right pipe
+  .byte $24
+  VramFill $27d9, 6, $aa  ; attribute data
+  VramFill $27e1, 5, $aa
+WarpZoneWelcomeEnd:
+
+; Offsets into the buffer of the data that gets patched after a message is copied
+TopNamePos       = TopStatusName - TopStatusBarLine
+TimeUpNamePos    = TimeUpName - TwoPlayerTimeUp
+LivesCrownPos    = LivesData + 4 - WorldLivesDisplay
+LivesCountPos    = LivesData + 5 - WorldLivesDisplay
+LivesWorldPos    = LivesWorldData + 6 - WorldLivesDisplay
+WarpNumberPos    = WarpPipeLeft - WarpZoneWelcome
+WarpNumberStride = WarpPipeMiddle - WarpPipeLeft
+.assert GameOverName - TwoPlayerGameOver = TimeUpNamePos, error, "Time up and game over names must line up"
+.assert WarpZoneWelcomeEnd - GameText <= $ff, error, "GameText offsets must fit in a byte"
 
 LuigiName:
   .byte "LUIGI"
@@ -570,6 +635,13 @@ GameTextOffsets:
   .byte TwoPlayerTimeUp-GameText, OnePlayerTimeUp-GameText
   .byte TwoPlayerGameOver-GameText, OnePlayerGameOver-GameText
   .byte WarpZoneWelcome-GameText, WarpZoneWelcome-GameText
+
+GameTextEnds:
+  .byte WorldLivesDisplay-GameText, WorldLivesDisplay-GameText
+  .byte TwoPlayerTimeUp-GameText, TwoPlayerTimeUp-GameText
+  .byte TwoPlayerGameOver-GameText, TwoPlayerGameOver-GameText
+  .byte WarpZoneWelcome-GameText, WarpZoneWelcome-GameText
+  .byte WarpZoneWelcomeEnd-GameText, WarpZoneWelcomeEnd-GameText
 
 
 .proc SetupPipeTransitionOverlay
@@ -664,12 +736,7 @@ GetSBNybbles:
 
 UpdateNumber:
   jsr PrintStatusBarNumbers ;print status bar numbers based on nybbles, whatever they be
-  ldy VramQueueIndex   
-  lda VramQueue-6,y         ;check highest digit of score
-  bne NoZSup                ;if zero, overwrite with space tile for zero suppression
-  lda #$24
-  sta VramQueue-6,y
-NoZSup:
+  ldy VramQueueIndex
   ldx ObjectOffset          ;get enemy object buffer offset
   rts
       
@@ -722,16 +789,23 @@ NoTopSc:
 ;$06, $07 - block buffer address low/high
 
 .proc RemoveCoin_Axe
-  ldy #VramColumnAsQueueIndex + 1 ;set low byte so offset points to the column buffer
+  ldy VramColumnIndex      ;append to the column list
   lda #$03                 ;load offset for default blank metatile
   ldx AreaType             ;check area type
   bne :+                   ;if not water type, use offset
     lda #$04                 ;otherwise load offset for blank metatile used in water
 :
   jsr PutBlockMetatile     ;do a sub to write blank metatile to vram buffer
-  VramSelectSource VramSrcColumn ;upload the column buffer and leave
+  tya
+  clc
+  adc #BLOCK_PACKETS_SIZE
+  sta VramColumnIndex
+  VramSelectSource VramSrcColumn ;upload the column list and leave
   rts
 .endproc
+
+; Two packets of two tiles
+BLOCK_PACKETS_SIZE = 12
 
 DestroyBlockMetatile:
   lda #$00       ;force blank metatile if branched/jumped to this point
@@ -753,13 +827,11 @@ WriteBlockMetatile:
 UseBOffset:
   tya                     ;put Y in A
   ldy VramQueueIndex      ;get vram buffer offset
-  iny                     ;move onto next byte
   jsr PutBlockMetatile    ;get appropriate block data and write to vram buffer
 MoveVOffset:
-  dey                     ;decrement vram buffer offset
-  tya                     ;add 10 bytes to it
+  tya                     ;add both packets to the vram buffer offset
   clc
-  adc #10
+  adc #BLOCK_PACKETS_SIZE
   jmp SetVRAMOffset       ;branch to store as new vram buffer offset
 PutBlockMetatile:
   stx R0                ;store control bit from SprDataOffset_Ctrl
@@ -796,27 +868,30 @@ SaveHAdder:
   ldy R1                ;get vram buffer offset to be used
   ;fallthrough
 RemBridge:
+  lda #$00
+  sta VramQueue+BLOCK_PACKETS_SIZE,y ;new terminator first
   lda BlockGfxData,x    ;write top left and top right
-  sta VramQueue+2,y     ;tile numbers into first spot
+  sta VramQueue+4,y     ;tile numbers into first spot
   lda BlockGfxData+1,x
-  sta VramQueue+3,y
+  sta VramQueue+5,y
   lda BlockGfxData+2,x  ;write bottom left and bottom
-  sta VramQueue+7,y     ;right tiles numbers into
+  sta VramQueue+10,y    ;right tiles numbers into
   lda BlockGfxData+3,x  ;second spot
-  sta VramQueue+8,y
+  sta VramQueue+11,y
   lda R4 
-  sta VramQueue,y       ;write low byte of name table
+  sta VramQueue+1,y     ;write low byte of name table
   clc                   ;into first slot as read
   adc #$20              ;add 32 bytes to value
-  sta VramQueue+5,y     ;write low byte of name table
-  lda R5                ;plus 32 bytes into second slot
-  sta VramQueue-1,y     ;write high byte of name
-  sta VramQueue+4,y     ;table address to both slots
-  lda #$02
-  sta VramQueue+1,y     ;put length of 2 in
-  sta VramQueue+6,y     ;both slots
-  lda #$00
-  sta VramQueue+9,y     ;put null terminator at end
+  sta VramQueue+7,y     ;write low byte of name table
+  lda #<VramBufEntry(2) ;put entry words in
+  sta VramQueue+2,y     ;both slots
+  sta VramQueue+8,y
+  lda #>VramBufEntry(2)
+  sta VramQueue+3,y
+  sta VramQueue+9,y
+  lda R5                ;write high byte of name table address to both slots,
+  sta VramQueue+6,y     ;the first one last to publish
+  sta VramQueue,y
   ldx R0                ;get offset control bit here
   rts                   ;and leave
 
@@ -844,12 +919,13 @@ RenderAreaGraphics:
   sta R5
   ldy VramColumnIndex          ;store vram buffer offset
   sty R0
+COLUMN_TILES = 26
+COLUMN_PACKET_SIZE = 4 + COLUMN_TILES
+  lda #$00                     ;new terminator first
+  sta VramBuffer+COLUMN_PACKET_SIZE,y
   lda CurrentNTAddr_Low        ;get current name table address we're supposed to render
-  sta VramColumn+1,y
-  lda CurrentNTAddr_High
-  sta VramColumn,y
-  lda #$9a                     ;store length byte of 26 here with d7 set
-  sta VramColumn+2,y           ;to increment by 32 (in columns)
+  sta VramBuffer+1,y
+  VramStoreEntry COLUMN_TILES, VramBuffer+2, y
   lda #$00                     ;init attribute row
   sta R4
   tax
@@ -863,16 +939,16 @@ DrawMTLoop:
   bcc @RightSideOfMtile
     ; Rendering the left side of the metatile, so load and store the two tiles for this column
     lda MTileTopLeft,y
-    sta VramColumn+3,x
+    sta VramBuffer+4,x
     lda MTileBotLeft,y
-    sta VramColumn+4,x
+    sta VramBuffer+5,x
     jmp @UpdateAttributes
 @RightSideOfMtile:
     ; Render the right side tiles and then fallthrough to get the attributes and update them
     lda MTileTopRight,y
-    sta VramColumn+3,x
+    sta VramBuffer+4,x
     lda MTileBotRight,y
-    sta VramColumn+4,x
+    sta VramBuffer+5,x
     ; fallthrough
 @UpdateAttributes:
   lda MTileAttribute,y
@@ -912,13 +988,14 @@ SetAttrib:
   inx                          ;the bottom of the screen
   cpx #$0d
   bcc DrawMTLoop               ;if not there yet, loop back
-            ldy R0                       ;get current vram buffer offset, increment by 3
-            iny                          ;(for name table address and length bytes)
-            iny
-            iny
-            lda #$00
-            sta VramColumn,y             ;put null terminator at end of data for name table
+            lda R0                       ;get current vram buffer offset, increment by 4
+            clc                          ;(for name table address and entry word)
+            adc #$04
+            tay
             sty VramColumnIndex          ;store new buffer offset
+            lda CurrentNTAddr_High       ;d7 set to increment by 32 (in columns)
+            ora #$80
+            sta VramBuffer-COLUMN_PACKET_SIZE,y ;publish
             inc CurrentNTAddr_Low        ;increment name table address low
             lda CurrentNTAddr_Low        ;check current low byte
             and #%00011111               ;if no wraparound, just skip this part
@@ -952,31 +1029,39 @@ SetATHigh:   and #%00000100           ;mask out all other bits
              lsr
              adc #$c0                 ;we should now have the appropriate block of
              sta R1                   ;attribute table in our temp address
+ATTRIB_PACKET_SIZE = 5
+ATTRIB_SET_SIZE = 7 * ATTRIB_PACKET_SIZE
+.assert ATTRIB_SET_SIZE < VRAM_BUFFER_SIZE - VRAM_COLUMN_BASE, error, "Attribute packets overflow the column region"
+.assert COLUMN_PACKET_SIZE < VRAM_BUFFER_SIZE - VRAM_COLUMN_BASE, error, "Column packet overflows the column region"
              ldx #$00
              ldy VramColumnIndex      ;get buffer offset
-AttribLoop:  lda R0 
-             sta VramColumn,y         ;store high byte of attribute table address
-             lda R1 
+             txa
+             sta VramBuffer+ATTRIB_SET_SIZE,y ;new terminator first
+AttribLoop:  cpx #$00                 ;the first high byte publishes the whole set,
+             beq SkipHigh             ;so it is written last
+             lda R0 
+             sta VramBuffer,y         ;store high byte of attribute table address
+SkipHigh:    lda R1 
              clc                      ;get low byte, add 8 because we want to start
              adc #$08                 ;below the status bar, and store
-             sta VramColumn+1,y
+             sta VramBuffer+1,y
              sta R1                   ;also store in temp again
+             VramStoreEntry 1, VramBuffer+2, y
              lda AttributeBuffer,x    ;fetch current attribute table byte and store
-             sta VramColumn+3,y       ;in the buffer
-             lda #$01
-             sta VramColumn+2,y       ;store length of 1 in buffer
-             lsr
+             sta VramBuffer+4,y       ;in the buffer
+             lda #$00
              sta AttributeBuffer,x    ;clear current byte in attribute buffer
-             iny                      ;increment buffer offset by 4 bytes
-             iny
-             iny
-             iny
+             tya                      ;increment buffer offset to the next packet
+             clc
+             adc #ATTRIB_PACKET_SIZE
+             tay
              inx                      ;increment attribute offset and check to see
              cpx #$07                 ;if we're at the end yet
              bcc AttribLoop
-             sta VramColumn,y         ;put null terminator at the end
              sty VramColumnIndex      ;store offset in case we want to do any more
-SetVRAMCtrl: VramSelectSource VramSrcColumn ;upload the column buffer and leave
+             lda R0 
+             sta VramBuffer-ATTRIB_SET_SIZE,y ;publish
+SetVRAMCtrl: VramSelectSource VramSrcColumn ;upload the column list and leave
              rts
 
 ;-------------------------------------------------------------------------------------
