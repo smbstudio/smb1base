@@ -3,10 +3,16 @@
 
 ; RAM
 .segment "ZEROPAGE"  :mem $0000 :size $0100 :zp
-.segment "SHORTRAM"  :mem $0100 :size $0100 :bss
+; The VRAM upload buffer. The rest of page 1 ($01a0-$01ff) is the stack.
+.segment "VRAMBUF"   :mem $0100 :size $00a0 :bss
 .segment "OAM"       :mem $0200 :size $0100 :bss
-.segment "BSS"       :mem $0300 :size $0500 :bss
-.segment "SRAM"      :mem $6000 :size $2000 :bss
+.segment "BSS"       :mem $0300 :size $04a8 :bss
+; RAM that no memory clear may touch, including the self modifying code.
+.segment "SHORTRAM"  :mem $07a8 :size $0058 :bss
+; Exclude user save data from all engine SRAM allocations.
+.segment "SRAM"      :mem $6000 + USER_SRAM_SIZE :size $2000 - USER_SRAM_SIZE :bss
+; Give audio its own segment so its actual SRAM use can be checked at link time.
+.segment "AUDIO_SRAM" :load "SRAM" :bss :define
 ; The audio driver ZP shares the NMI temps at $00. This has to be its own RAM segment because
 ; a :load segment can't be placed on top of bytes that ZEROPAGE already hands out.
 .segment "MUSIC_ZEROPAGE_OVERLAY" :mem $00 :size $10 :zp

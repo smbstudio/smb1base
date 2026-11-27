@@ -1,4 +1,3 @@
-
 .segment "RENDER"
 
 clabel InitScreen
@@ -52,7 +51,7 @@ InitScreen:
   jsr InitializeNameTables    ;and erase both name and attribute tables
   lda OperMode
   beq NextSubtask             ;if mode still 0, do not load
-  ldx #$03                    ;into buffer pointer
+  ldx #UndergroundPaletteDataOffset ;into buffer pointer
   jmp SetVRAMAddr_A
   ; implicit rts
 
@@ -60,11 +59,12 @@ GetAreaPalette:
   ldy AreaType             ;select appropriate palette to load
   ldx AreaPalette,y        ;based on area type
 SetVRAMAddr_A:
-  stx VRAM_Buffer_AddrCtrl ;store offset into buffer control
+  VramSelectSourceX        ;store offset into buffer control
 NextSubtask:
   jmp IncSubtask           ;move onto next task
 AreaPalette:
-  .byte $01, $02, $03, $04
+  .byte WaterPaletteDataOffset, GroundPaletteDataOffset
+  .byte UndergroundPaletteDataOffset, CastlePaletteDataOffset
 
 
 ;-------------------------------------------------------------------------------------
@@ -94,8 +94,7 @@ InitNTLoop:
   bne InitNTLoop
   ldy #64                   ;now to clear the attribute table (with zero this time)
   txa
-  sta VRAM_Buffer1_Offset   ;init vram buffer 1 offset
-  sta VRAM_Buffer1          ;init vram buffer 1
+  VramQueueReset           ;init vram buffer 1
 InitATLoop:
   sta PPUDATA
   dey
@@ -134,29 +133,28 @@ SetupIntermediate:
 WriteBottomStatusLine:
 
   jsr GetSBNybbles        ;write player's score and coin tally to screen
-  ldx VRAM_Buffer1_Offset
-  lda #$20                ;write address for world-area number on screen
-  sta VRAM_Buffer1,x
-  lda #$73
-  sta VRAM_Buffer1+1,x
-  lda #$03                ;write length for it
-  sta VRAM_Buffer1+2,x
+  ldx VramQueueIndex
+  lda #$00                ;new terminator first
+  sta VramQueue+7,x
+  lda #<(HUD_SCORE_ADDR+$13) ;write address for world-area number on screen
+  sta VramQueue+1,x
+  VramStoreEntry 3, VramQueue+2, x
   ldy WorldNumber         ;first the world number
   iny
   tya
-  sta VRAM_Buffer1+3,x
+  sta VramQueue+4,x
   lda #$28                ;next the dash
-  sta VRAM_Buffer1+4,x
+  sta VramQueue+5,x
   ldy LevelNumber         ;next the level number
   iny                     ;increment for proper number display
   tya
-  sta VRAM_Buffer1+5,x    
-  lda #$00                ;put null terminator on
-  sta VRAM_Buffer1+6,x
-  txa                     ;move the buffer offset up by 6 bytes
+  sta VramQueue+6,x
+  lda #>HUD_SCORE_ADDR    ;publish
+  sta VramQueue,x
+  txa                     ;move the buffer offset up by 7 bytes
   clc
-  adc #$06
-  sta VRAM_Buffer1_Offset
+  adc #$07
+  sta VramQueueIndex
   jmp IncSubtask
 
 ;-------------------------------------------------------------------------------------
@@ -266,13 +264,16 @@ NoTimeUp:
 
 .proc AreaParserTaskControl
   inc DisableScreenFlag     ;turn off screen
+  lda #$00                  ;the set is too big for the column region, and the queue
+  sta VramBuffer            ;is empty here, so build it from the start of the buffer
+  sta VramColumnIndex
+  sta VramColumnStart
   farcall AreaParserTaskLoop
   dec ColumnSets            ;do we need to render more column sets?
   bpl OutputCol
     inc ScreenRoutineTask     ;if not, move on to the next task
 OutputCol:
-  lda #$06                  ;set vram buffer to output rendered column set
-  sta VRAM_Buffer_AddrCtrl  ;on next NMI
+  VramSelectSource VramSrcColumn ;output rendered column set on next NMI
   rts
 .endproc
 
@@ -282,13 +283,15 @@ GetBackgroundColor:
   ldy BackgroundColorCtrl   ;check background color control
   beq NoBGColor             ;if not set, increment task and fetch palette
   lda BGColorCtrl_Addr-4,y  ;put appropriate palette into vram
-  sta VRAM_Buffer_AddrCtrl  ;note that if set to 5-7, $0301 will not be read
+  VramSelectSourceA         ;note that if set to 5-7, $0301 will not be read
 NoBGColor:
   inc ScreenRoutineTask     ;increment to next subtask and plod on through    
   ;fallthrough
 
 GetPlayerColors:
-  ldx VRAM_Buffer1_Offset  ;get current buffer offset
+  ldx VramQueueIndex       ;get current buffer offset
+  lda #$00
+  sta VramQueue+8,x        ;new terminator first
   ldy #$00
   lda CurrentPlayer        ;check which player is on the screen
   beq ChkFiery
@@ -303,35 +306,36 @@ StartClrGet:
   sta R0 
 ClrGetLoop:
   lda PlayerColors,y       ;fetch player colors and store them
-  sta VRAM_Buffer1+3,x     ;in the buffer
+  sta VramQueue+4,x        ;in the buffer
   iny
   inx
   dec R0 
   bpl ClrGetLoop
-  ldx VRAM_Buffer1_Offset  ;load original offset from before
+  txa                      ;back to the original offset
+  sec
+  sbc #$04
+  tax
   ldy BackgroundColorCtrl  ;if this value is four or greater, it will be set
   bne SetBGColor           ;therefore use it as offset to background color
   ldy AreaType             ;otherwise use area type bits from area offset as offset
 SetBGColor:
   lda BackgroundColors,y   ;to background color instead
-  sta VRAM_Buffer1+3,x
-  lda #$3f                 ;set for sprite palette address
-  sta VRAM_Buffer1,x       ;save to buffer
-  lda #$10
-  sta VRAM_Buffer1+1,x
-  lda #$04                 ;write length byte to buffer
-  sta VRAM_Buffer1+2,x
-  lda #$00                 ;now the null terminator
-  sta VRAM_Buffer1+7,x
-  txa                      ;move the buffer pointer ahead 7 bytes
+  sta VramQueue+4,x
+  lda #$10                 ;set for sprite palette address
+  sta VramQueue+1,x
+  VramStoreEntry 4, VramQueue+2, x
+  lda #$3f                 ;publish
+  sta VramQueue,x
+  txa                      ;move the buffer pointer ahead 8 bytes
   clc                      ;in case we want to write anything else later
-  adc #$07
+  adc #$08
 SetVRAMOffset:
-  sta VRAM_Buffer1_Offset  ;store as new vram buffer offset
+  sta VramQueueIndex       ;store as new vram buffer offset
   rts
 
 BGColorCtrl_Addr:
-      .byte $00, $09, $0a, $04
+      .byte VramSrcQueue, DaySnowPaletteDataOffset
+      .byte NightSnowPaletteDataOffset, CastlePaletteDataOffset
 
 BackgroundColors:
       .byte $22, $22, $0f, $0f ;used by area type if bg color ctrl not set
@@ -349,10 +353,10 @@ GetAlternatePalette1:
   lda AreaStyle            ;check for mushroom level style
   cmp #$01
   bne NoAltPal
-  lda #$0b                 ;if found, load appropriate palette
+  lda #MushroomPaletteDataOffset ;if found, load appropriate palette
 
 SetVRAMAddr_B:
-  sta VRAM_Buffer_AddrCtrl
+  VramSelectSourceA
 NoAltPal:
   jmp IncSubtask           ;now onto the next task
 
@@ -380,12 +384,15 @@ IncModeTask_B:
 ClearBuffersDrawIcon:
   lda OperMode               ;check game mode
   bne IncModeTask_B          ;if not title screen mode, leave
-  ldx #$00                   ;otherwise, clear buffer space
+; Vanilla cleared 512 bytes from the old VRAM buffer, which also reset these variables
+ICON_CLEAR_SIZE = HammerEnemyOffset + 2 - BowserBodyControls
+  ldx #$00                   ;A is 0 here
 TScrClear:
-  sta VRAM_Buffer1-1,x
-  sta VRAM_Buffer1-1+$100,x
+  sta BowserBodyControls,x
+  sta BowserBodyControls+ICON_CLEAR_SIZE-$100,x
   dex
   bne TScrClear
+  jsr VramReset
   jsr DrawMushroomIcon       ;draw player select icon
 IncSubtask:
   inc ScreenRoutineTask      ;move onto next task
@@ -394,22 +401,29 @@ IncSubtask:
 ;-------------------------------------------------------------------------------------
 
 cproc DrawMushroomIcon
-  ldy #$07                ;read eight bytes to be read by transfer routine
+  lda #$00                ;empty the list while it is replaced
+  sta VramQueue
+  ldy #$07
 IconDataRead:
   lda MushroomIconData,y  ;note that the default position is set for a
-  sta VRAM_Buffer1-1,y    ;1-player game
+  sta VramQueue,y         ;1-player game
   dey
-  bpl IconDataRead
+  bne IconDataRead
   lda NumberOfPlayers     ;check number of players
   beq ExitIcon            ;if set to 1-player game, we're done
   lda #$24                ;otherwise, load blank tile in 1-player position
-  sta VRAM_Buffer1+3
+  sta VramQueue+4
   lda #$2a                ;then load shroom icon tile in 2-player position
-  sta VRAM_Buffer1+5
+  sta VramQueue+6
 ExitIcon:
+  lda MushroomIconData    ;publish
+  sta VramQueue
+  lda #$07
+  sta VramQueueIndex
   rts
 MushroomIconData:
-  .byte $07, $22, $49, $83, $2a, $24, $24, $00
+  VramBuf $a1c9, 3     ;d15 set: vertical
+  .byte $2a, $24, $24, $00
 .endproc
 
 
@@ -429,19 +443,35 @@ Chk2Players:
     iny                      ;otherwise increment offset by one to not print name
 LdGameText:
     ldx GameTextOffsets,y    ;get offset to message we want to print
-    ldy #$00
+    lda GameTextEnds,y
+    sta M0
+    lda #$00                 ;empty the list while it is replaced
+    sta VramQueue
+    lda GameText,x           ;hold back the first byte
+    pha
+      inx
+      ldy #$01
 GameTextLoop:
-    lda GameText,x           ;load message data
-    cmp #$ff                 ;check for terminator
-    beq EndGameText          ;branch to end text if found
-    sta VRAM_Buffer1,y       ;otherwise write data to buffer
-    inx                      ;and increment increment
-    iny
-    bne GameTextLoop         ;do this for 256 bytes if no terminator found
-EndGameText:
-    lda #$00                 ;put null terminator at end
-    sta VRAM_Buffer1,y
+        lda GameText,x         ;load message data
+        sta VramQueue,y        ;write data to buffer
+        inx                    ;and increment increment
+        iny
+        cpx M0
+        bne GameTextLoop
+      lda #$00                 ;put null terminator at end
+      sta VramQueue,y
+      sty M1                   ;length of the message
+    pla
+    sta M0
   pla                      ;pull original text number from stack
+  jsr PatchGameText
+  lda M0                   ;publish
+  sta VramQueue
+  lda M1                   ;later queue writes go after the message
+  sta VramQueueIndex
+  rts
+
+PatchGameText:
   tax
   cmp #$04                 ;are we printing warp zone?
   bcs PrintWarpZoneNumbers
@@ -453,18 +483,16 @@ EndGameText:
   cmp #10                  ;more than 9 lives?
   bcc PutLives
   sbc #10                  ;if so, subtract 10 and put a crown tile
-  ; jroweboy: I added +4 to each of these to account for the new position in VRAM Buffer
-  ; because I moved the attribute writes to the start to prevent glitches with that.
   ldy #$9f                 ;next to the difference...strange things happen if
-  sty VRAM_Buffer1+7+4       ;the number of lives exceeds 19
+  sty VramQueue+LivesCrownPos          ;the number of lives exceeds 19
 PutLives:
-  sta VRAM_Buffer1+8+4
+  sta VramQueue+LivesCountPos
   ldy WorldNumber          ;write world and level numbers (incremented for display)
   iny                      ;to the buffer in the spaces surrounding the dash
-  sty VRAM_Buffer1+19+4
+  sty VramQueue+LivesWorldPos
   ldy LevelNumber
   iny
-  sty VRAM_Buffer1+21+4      ;we're done here
+  sty VramQueue+LivesWorldPos+2        ;we're done here
   rts
 CheckPlayerName:
   lda NumberOfPlayers    ;check number of players
@@ -480,12 +508,20 @@ ChkLuigi:
   lsr
   bcc ExitChkName        ;if mario is current player, do not change the name
     ldy #$04
+    cpx #$fe               ;the top status bar has the name at another position
+    beq TopNameLoop
 NameLoop:
       lda LuigiName,y        ;otherwise, replace "MARIO" with "LUIGI"
-      sta VRAM_Buffer1+3+8,y
+      sta VramQueue+TimeUpNamePos,y
       dey
       bpl NameLoop           ;do this until each letter is replaced
 ExitChkName:
+  rts
+TopNameLoop:
+  lda LuigiName,y
+  sta VramQueue+TopNamePos,y
+  dey
+  bpl TopNameLoop
   rts
 
 PrintWarpZoneNumbers:
@@ -496,16 +532,15 @@ PrintWarpZoneNumbers:
   ldy #$00
 WarpNumLoop:
     lda WarpZoneNumbers,x  ;print warp zone numbers into the
-    sta VRAM_Buffer1+27,y  ;placeholders from earlier
+    sta VramQueue+WarpNumberPos,y ;placeholders from earlier
     inx
-    iny                    ;put a number in every fourth space
-    iny
-    iny
-    iny
-    cpy #$0c
+    tya                    ;put a number in the data byte of each pipe packet
+    clc
+    adc #WarpNumberStride
+    tay
+    cpy #WarpNumberStride * 3
     bcc WarpNumLoop
-  lda #$2c               ;load new buffer pointer at end of message
-  jmp SetVRAMOffset
+  rts
 
 
 endcproc
@@ -515,46 +550,76 @@ TopStatusBarLine:
 ; jroweboy: moved the attribute writes first which fixes a glitchy transition between levels.
 ; if the last byte written in nmi is in the attribute tables, it affects the scroll for the
 ; next frame, so this works around it by making sure attributes aren't last.
-  .byte $23, $c0, $7f, $aa ; attribute table data, clears name table 0 to palette 2
-  .byte $23, $c2, $01, $ea ; attribute table data, used for coin icon in status bar
-  .byte $20, $43, $05, "MARIO"
-  .byte $20, $52, $0b, "WORLD  TIME"
-  .byte $20, $68, $05, "0  ", $2e, $29 ; score trailing digit and coin display
-  .byte $ff ; end of data block
+  VramFill $23c0, 64, $aa ; attribute table data, clears name table 0 to palette 2
+  VramFill $27f8, 8, $aa  ; lower half of the status bar
+  VramBuf $27fa, 1        ; attribute table data, used for coin icon in status bar
+  .byte $ae
+  VramBuf HUD_LABEL_ADDR+$03, 5
+TopStatusName:
+  .byte "MARIO"
+  VramBuf HUD_LABEL_ADDR+$12, 11
+  .byte "WORLD  TIME"
+  VramBuf HUD_SCORE_ADDR+$08, 5
+  .byte "0  ", $2e, $29      ; score trailing digit and coin display
 
 WorldLivesDisplay:
-  .byte $23, $dc, $01, $ba ; attribute table data for crown if more than 9 lives
-  .byte $21, $cd, $07, $24, $24 ; cross with spaces used on
-  .byte $29, $24, $24, $24, $24 ; lives display
-  .byte $21, $4b, $09, "WORLD  - "
-  .byte $22, $0c, $47, $24 ; possibly used to clear time up
-  .byte $ff
+  VramBuf $23d4, 1        ; attribute table data for crown if more than 9 lives
+  .byte $ba
+  VramBuf $214d, 7        ; cross with spaces used on
+LivesData:
+  .byte $24, $24, $29, $24, $24, $24, $24 ; lives display
+  VramBuf $20cb, 9
+LivesWorldData:
+  .byte "WORLD  - "
+  VramFill $218c, 7, $24  ; possibly used to clear time up
 
 TwoPlayerTimeUp:
 ; jroweboy since we reordered the attribute writes to fix a glitchy transition
-; we need to pad out the time up and game over messages to use the same offset
-; for "MARIO" so the two player write text will write over the correct location.
-  .byte $21, $cd, $05, "     "
-  .byte $21, $cd, $05, "MARIO"
+; we need to pad out the time up and game over messages with a blank first packet
+  VramBuf $214d, 5
+  .byte "     "
+  VramBuf $214d, 5
+TimeUpName:
+  .byte "MARIO"
 OnePlayerTimeUp:
-  .byte $22, $0c, $07, "TIME UP"
-  .byte $ff
+  VramBuf $218c, 7
+  .byte "TIME UP"
 
 TwoPlayerGameOver:
-  .byte $21, $cd, $05, "     "
-  .byte $21, $cd, $05, "MARIO"
+  VramBuf $214d, 5
+  .byte "     "
+  VramBuf $214d, 5
+GameOverName:
+  .byte "MARIO"
 OnePlayerGameOver:
-  .byte $22, $0b, $09, "GAME OVER"
-  .byte $ff
+  VramBuf $218b, 9
+  .byte "GAME OVER"
 
 WarpZoneWelcome:
-  .byte $25, $84, $15, "WELCOME TO WARP ZONE!"
-  .byte $26, $25, $01, $24         ; placeholder for left pipe
-  .byte $26, $2d, $01, $24         ; placeholder for middle pipe
-  .byte $26, $35, $01, $24         ; placeholder for right pipe
-  .byte $27, $d9, $46, $aa         ; attribute data
-  .byte $27, $e1, $45, $aa
-  .byte $ff
+  VramBuf $2504, 21
+  .byte "WELCOME TO WARP ZONE!"
+  VramBuf $25a5, 1        ; placeholder for left pipe
+WarpPipeLeft:
+  .byte $24
+  VramBuf $25ad, 1        ; placeholder for middle pipe
+WarpPipeMiddle:
+  .byte $24
+  VramBuf $25b5, 1        ; placeholder for right pipe
+  .byte $24
+  VramFill $27d1, 6, $aa  ; attribute data
+  VramFill $27d9, 5, $aa
+WarpZoneWelcomeEnd:
+
+; Offsets into the buffer of the data that gets patched after a message is copied
+TopNamePos       = TopStatusName - TopStatusBarLine
+TimeUpNamePos    = TimeUpName - TwoPlayerTimeUp
+LivesCrownPos    = LivesData + 4 - WorldLivesDisplay
+LivesCountPos    = LivesData + 5 - WorldLivesDisplay
+LivesWorldPos    = LivesWorldData + 6 - WorldLivesDisplay
+WarpNumberPos    = WarpPipeLeft - WarpZoneWelcome
+WarpNumberStride = WarpPipeMiddle - WarpPipeLeft
+.assert GameOverName - TwoPlayerGameOver = TimeUpNamePos, error, "Time up and game over names must line up"
+.assert WarpZoneWelcomeEnd - GameText <= $ff, error, "GameText offsets must fit in a byte"
 
 LuigiName:
   .byte "LUIGI"
@@ -570,6 +635,13 @@ GameTextOffsets:
   .byte TwoPlayerTimeUp-GameText, OnePlayerTimeUp-GameText
   .byte TwoPlayerGameOver-GameText, OnePlayerGameOver-GameText
   .byte WarpZoneWelcome-GameText, WarpZoneWelcome-GameText
+
+GameTextEnds:
+  .byte WorldLivesDisplay-GameText, WorldLivesDisplay-GameText
+  .byte TwoPlayerTimeUp-GameText, TwoPlayerTimeUp-GameText
+  .byte TwoPlayerGameOver-GameText, TwoPlayerGameOver-GameText
+  .byte WarpZoneWelcome-GameText, WarpZoneWelcome-GameText
+  .byte WarpZoneWelcomeEnd-GameText, WarpZoneWelcomeEnd-GameText
 
 
 .proc SetupPipeTransitionOverlay
@@ -612,20 +684,20 @@ GameTextOffsets:
 ;   ; jmp SetPaletteColor
 ;   ; fallthrough
 ; SetPaletteColor:
-;   ldx VRAM_Buffer1_Offset
-;   sta VRAM_Buffer1+3,x
+;   ldx VramQueueIndex
+;   sta VramQueue+3,x
 ;   lda #$3f
-;   sta VRAM_Buffer1+0,x
+;   sta VramQueue+0,x
 ;   lda #$1b
-;   sta VRAM_Buffer1+1,x
+;   sta VramQueue+1,x
 ;   lda #1
-;   sta VRAM_Buffer1+2,x
+;   sta VramQueue+2,x
 ;   lda #0
-;   sta VRAM_Buffer1+4,x
-;   lda VRAM_Buffer1_Offset
+;   sta VramQueue+4,x
+;   lda VramQueueIndex
 ;   clc 
 ;   adc #4
-;   sta VRAM_Buffer1_Offset
+;   sta VramQueueIndex
 ;   rts
 .endproc
 
@@ -664,12 +736,7 @@ GetSBNybbles:
 
 UpdateNumber:
   jsr PrintStatusBarNumbers ;print status bar numbers based on nybbles, whatever they be
-  ldy VRAM_Buffer1_Offset   
-  lda VRAM_Buffer1-6,y      ;check highest digit of score
-  bne NoZSup                ;if zero, overwrite with space tile for zero suppression
-  lda #$24
-  sta VRAM_Buffer1-6,y
-NoZSup:
+  ldy VramQueueIndex
   ldx ObjectOffset          ;get enemy object buffer offset
   rts
       
@@ -722,17 +789,23 @@ NoTopSc:
 ;$06, $07 - block buffer address low/high
 
 .proc RemoveCoin_Axe
-  ldy #VRAM_Buffer2 - VRAM_Buffer1 + 1 ;set low byte so offset points to $0341
+  ldy VramColumnIndex      ;append to the column list
   lda #$03                 ;load offset for default blank metatile
   ldx AreaType             ;check area type
   bne :+                   ;if not water type, use offset
     lda #$04                 ;otherwise load offset for blank metatile used in water
 :
   jsr PutBlockMetatile     ;do a sub to write blank metatile to vram buffer
-  lda #$06
-  sta VRAM_Buffer_AddrCtrl ;set vram address controller to $0341 and leave
+  tya
+  clc
+  adc #BLOCK_PACKETS_SIZE
+  sta VramColumnIndex
+  VramSelectSource VramSrcColumn ;upload the column list and leave
   rts
 .endproc
+
+; Two packets of two tiles
+BLOCK_PACKETS_SIZE = 12
 
 DestroyBlockMetatile:
   lda #$00       ;force blank metatile if branched/jumped to this point
@@ -753,14 +826,12 @@ WriteBlockMetatile:
   iny                     ;if any other metatile, increment offset for empty block
 UseBOffset:
   tya                     ;put Y in A
-  ldy VRAM_Buffer1_Offset ;get vram buffer offset
-  iny                     ;move onto next byte
+  ldy VramQueueIndex      ;get vram buffer offset
   jsr PutBlockMetatile    ;get appropriate block data and write to vram buffer
 MoveVOffset:
-  dey                     ;decrement vram buffer offset
-  tya                     ;add 10 bytes to it
+  tya                     ;add both packets to the vram buffer offset
   clc
-  adc #10
+  adc #BLOCK_PACKETS_SIZE
   jmp SetVRAMOffset       ;branch to store as new vram buffer offset
 PutBlockMetatile:
   stx R0                ;store control bit from SprDataOffset_Ctrl
@@ -781,8 +852,6 @@ SaveHAdder:
   lda #$00
   sta R5                ;initialize temp high byte
   lda R2                ;get vertical high nybble offset used in block buffer routine
-  clc
-  adc #$20              ;add 32 pixels for the status bar
   asl
   rol R5                ;shift and rotate d7 onto d0 and d6 into carry
   asl
@@ -797,27 +866,30 @@ SaveHAdder:
   ldy R1                ;get vram buffer offset to be used
   ;fallthrough
 RemBridge:
+  lda #$00
+  sta VramQueue+BLOCK_PACKETS_SIZE,y ;new terminator first
   lda BlockGfxData,x    ;write top left and top right
-  sta VRAM_Buffer1+2,y  ;tile numbers into first spot
+  sta VramQueue+4,y     ;tile numbers into first spot
   lda BlockGfxData+1,x
-  sta VRAM_Buffer1+3,y
+  sta VramQueue+5,y
   lda BlockGfxData+2,x  ;write bottom left and bottom
-  sta VRAM_Buffer1+7,y  ;right tiles numbers into
+  sta VramQueue+10,y    ;right tiles numbers into
   lda BlockGfxData+3,x  ;second spot
-  sta VRAM_Buffer1+8,y
+  sta VramQueue+11,y
   lda R4 
-  sta VRAM_Buffer1,y    ;write low byte of name table
+  sta VramQueue+1,y     ;write low byte of name table
   clc                   ;into first slot as read
   adc #$20              ;add 32 bytes to value
-  sta VRAM_Buffer1+5,y  ;write low byte of name table
-  lda R5                ;plus 32 bytes into second slot
-  sta VRAM_Buffer1-1,y  ;write high byte of name
-  sta VRAM_Buffer1+4,y  ;table address to both slots
-  lda #$02
-  sta VRAM_Buffer1+1,y  ;put length of 2 in
-  sta VRAM_Buffer1+6,y  ;both slots
-  lda #$00
-  sta VRAM_Buffer1+9,y  ;put null terminator at end
+  sta VramQueue+7,y     ;write low byte of name table
+  lda #<VramBufEntry(2) ;put entry words in
+  sta VramQueue+2,y     ;both slots
+  sta VramQueue+8,y
+  lda #>VramBufEntry(2)
+  sta VramQueue+3,y
+  sta VramQueue+9,y
+  lda R5                ;write high byte of name table address to both slots,
+  sta VramQueue+6,y     ;the first one last to publish
+  sta VramQueue,y
   ldx R0                ;get offset control bit here
   rts                   ;and leave
 
@@ -843,14 +915,15 @@ RenderAreaGraphics:
   lda CurrentColumnPos         ;store LSB of where we're at
   and #$01
   sta R5
-  ldy VRAM_Buffer2_Offset      ;store vram buffer offset
+  ldy VramColumnIndex          ;store vram buffer offset
   sty R0
+COLUMN_TILES = 26
+COLUMN_PACKET_SIZE = 4 + COLUMN_TILES
+  lda #$00                     ;new terminator first
+  sta VramBuffer+COLUMN_PACKET_SIZE,y
   lda CurrentNTAddr_Low        ;get current name table address we're supposed to render
-  sta VRAM_Buffer2+1,y
-  lda CurrentNTAddr_High
-  sta VRAM_Buffer2,y
-  lda #$9a                     ;store length byte of 26 here with d7 set
-  sta VRAM_Buffer2+2,y         ;to increment by 32 (in columns)
+  sta VramBuffer+1,y
+  VramStoreEntry COLUMN_TILES, VramBuffer+2, y
   lda #$00                     ;init attribute row
   sta R4
   tax
@@ -864,16 +937,16 @@ DrawMTLoop:
   bcc @RightSideOfMtile
     ; Rendering the left side of the metatile, so load and store the two tiles for this column
     lda MTileTopLeft,y
-    sta VRAM_Buffer2+3,x
+    sta VramBuffer+4,x
     lda MTileBotLeft,y
-    sta VRAM_Buffer2+4,x
+    sta VramBuffer+5,x
     jmp @UpdateAttributes
 @RightSideOfMtile:
     ; Render the right side tiles and then fallthrough to get the attributes and update them
     lda MTileTopRight,y
-    sta VRAM_Buffer2+3,x
+    sta VramBuffer+4,x
     lda MTileBotRight,y
-    sta VRAM_Buffer2+4,x
+    sta VramBuffer+5,x
     ; fallthrough
 @UpdateAttributes:
   lda MTileAttribute,y
@@ -913,19 +986,20 @@ SetAttrib:
   inx                          ;the bottom of the screen
   cpx #$0d
   bcc DrawMTLoop               ;if not there yet, loop back
-            ldy R0                       ;get current vram buffer offset, increment by 3
-            iny                          ;(for name table address and length bytes)
-            iny
-            iny
-            lda #$00
-            sta VRAM_Buffer2,y           ;put null terminator at end of data for name table
-            sty VRAM_Buffer2_Offset      ;store new buffer offset
+            lda R0                       ;get current vram buffer offset, increment by 4
+            clc                          ;(for name table address and entry word)
+            adc #$04
+            tay
+            sty VramColumnIndex          ;store new buffer offset
+            lda CurrentNTAddr_High       ;d7 set to increment by 32 (in columns)
+            ora #$80
+            sta VramBuffer-COLUMN_PACKET_SIZE,y ;publish
             inc CurrentNTAddr_Low        ;increment name table address low
             lda CurrentNTAddr_Low        ;check current low byte
             and #%00011111               ;if no wraparound, just skip this part
             bne ExitDrawM
-            lda #$80                     ;if wraparound occurs, make sure low byte stays
-            sta CurrentNTAddr_Low        ;just under the status bar
+            lda #$00                     ;if wraparound occurs, go back to
+            sta CurrentNTAddr_Low        ;the top of the playfield
             lda CurrentNTAddr_High       ;and then invert d2 of the name table address high
             eor #%00000100               ;to move onto the next appropriate name table
             sta CurrentNTAddr_High
@@ -951,217 +1025,165 @@ SetATHigh:   and #%00000100           ;mask out all other bits
              lda R1                   ;get low byte - 4, divide by 4, add offset for
              lsr                      ;attribute table and store
              lsr
-             adc #$c0                 ;we should now have the appropriate block of
-             sta R1                   ;attribute table in our temp address
+             adc #$c0 - 8             ;one row early, as the loop adds a row before
+             sta R1                   ;each write
+ATTRIB_PACKET_SIZE = 5
+ATTRIB_SET_SIZE = 7 * ATTRIB_PACKET_SIZE
+.assert ATTRIB_SET_SIZE < VRAM_BUFFER_SIZE - VRAM_COLUMN_BASE, error, "Attribute packets overflow the column region"
+.assert COLUMN_PACKET_SIZE < VRAM_BUFFER_SIZE - VRAM_COLUMN_BASE, error, "Column packet overflows the column region"
              ldx #$00
-             ldy VRAM_Buffer2_Offset  ;get buffer offset
-AttribLoop:  lda R0 
-             sta VRAM_Buffer2,y       ;store high byte of attribute table address
-             lda R1 
+             ldy VramColumnIndex      ;get buffer offset
+             txa
+             sta VramBuffer+ATTRIB_SET_SIZE,y ;new terminator first
+AttribLoop:  cpx #$00                 ;the first high byte publishes the whole set,
+             beq SkipHigh             ;so it is written last
+             lda R0 
+             sta VramBuffer,y         ;store high byte of attribute table address
+SkipHigh:    lda R1 
              clc                      ;get low byte, add 8 because we want to start
-             adc #$08                 ;below the status bar, and store
-             sta VRAM_Buffer2+1,y
+             adc #$08                 ;and store
+             sta VramBuffer+1,y
              sta R1                   ;also store in temp again
+             VramStoreEntry 1, VramBuffer+2, y
              lda AttributeBuffer,x    ;fetch current attribute table byte and store
-             sta VRAM_Buffer2+3,y     ;in the buffer
-             lda #$01
-             sta VRAM_Buffer2+2,y     ;store length of 1 in buffer
-             lsr
+             sta VramBuffer+4,y       ;in the buffer
+             lda #$00
              sta AttributeBuffer,x    ;clear current byte in attribute buffer
-             iny                      ;increment buffer offset by 4 bytes
-             iny
-             iny
-             iny
+             tya                      ;increment buffer offset to the next packet
+             clc
+             adc #ATTRIB_PACKET_SIZE
+             tay
              inx                      ;increment attribute offset and check to see
              cpx #$07                 ;if we're at the end yet
              bcc AttribLoop
-             sta VRAM_Buffer2,y       ;put null terminator at the end
-             sty VRAM_Buffer2_Offset  ;store offset in case we want to do any more
-SetVRAMCtrl: lda #$06
-             sta VRAM_Buffer_AddrCtrl ;set buffer to $0341 and leave
+             sty VramColumnIndex      ;store offset in case we want to do any more
+             lda R0 
+             sta VramBuffer-ATTRIB_SET_SIZE,y ;publish
+SetVRAMCtrl: VramSelectSource VramSrcColumn ;upload the column list and leave
              rts
 
 ;-------------------------------------------------------------------------------------
-;METATILE GRAPHICS TABLE
-MTILE_CURRENT_INDEX .set $00
-.macro MTileDefine tl, bl, tr, br, attr
-.ident(.sprintf("MTILE_TL_%d", MTILE_CURRENT_INDEX)) = tl
-.ident(.sprintf("MTILE_BL_%d", MTILE_CURRENT_INDEX)) = bl
-.ident(.sprintf("MTILE_TR_%d", MTILE_CURRENT_INDEX)) = tr
-.ident(.sprintf("MTILE_BR_%d", MTILE_CURRENT_INDEX)) = br
-.ident(.sprintf("MTILE_AT_%d", MTILE_CURRENT_INDEX)) = attr
-MTILE_CURRENT_INDEX .set MTILE_CURRENT_INDEX + 1
-.endmacro
+; Metatile tables are indexed by the same IDs in both level formats.
+; Bits 3-5 of the attribute byte are available for other types of flags
+; TODO: Consider a second set of table entries for extended attributes.
+; TODO: Condense the table by removing palette bits from the ID and renumbering metatiles.
+; Remapping IDs in level_vanilla.s could preserve compatibility with existing level editors.
+; TODO: Page-align the tables to save a cycle on indexed reads.
 
-MTILE_SOLID     = 1 << 0 ; Blocks that are collidable at all
-MTILE_CLIMB     = 1 << 1 ; Climbable blocks
-MTILE_BUMP      = 1 << 2 ; Solid blocks that also make a bump noise when hitting them with your head
-; MTILE_DAMAGE    = 1 << 3 ; unimplemented
-; MTILE_KILL      = 1 << 4 ; unimplemented
-; MTILE_SWIM      = 1 << 5 ; unimplemented
-MTILE_PALETTE_0 = 0 << 6
-MTILE_PALETTE_1 = 1 << 6
-MTILE_PALETTE_2 = 2 << 6
-MTILE_PALETTE_3 = 3 << 6
-; TODO: consider making a second batch of table entries for extended attributes
-; TODO: update the level format to condense the table (remove the palette from bit 6/7 and renumber the metatiles?)
-; could maybe pull this off by changing all of the metatiles in level_tiles.s without touching the level format (so it should still be possible to use existing level editors)
+.jsinput metatileFile, "metatiles/metatiles.json"
+.pushseg
+.jsbegin
+// Emit the assembly constants from the same bits used to encode attributes.
+const flagBits = { 
+  solid: 1 << 0, 
+  climb: 1 << 1, 
+  bump: 1 << 2 
+};
+for (const [flag, bit] of Object.entries(flagBits)) {
+  a.assign("MTILE_" + flag.toUpperCase(), bit);
+}
 
-MTILE_CURRENT_INDEX .set $00
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_0 ;blank
-  MTileDefine $27, $27, $27, $27, MTILE_PALETTE_0 ;black metatile
-  MTileDefine $24, $24, $24, $30, MTILE_PALETTE_0 ;bush left
-  MTileDefine $31, $25, $32, $25, MTILE_PALETTE_0 ;bush middle
-  MTileDefine $24, $33, $24, $24, MTILE_PALETTE_0 ;bush right
-  MTileDefine $24, $34, $34, $26, MTILE_PALETTE_0 ;mountain left
-  MTileDefine $26, $26, $38, $26, MTILE_PALETTE_0 ;mountain left bottom/middle center
-  MTileDefine $24, $35, $24, $36, MTILE_PALETTE_0 ;mountain middle top
-  MTileDefine $37, $26, $24, $37, MTILE_PALETTE_0 ;mountain right
-  MTileDefine $38, $26, $26, $26, MTILE_PALETTE_0 ;mountain right bottom
-  MTileDefine $26, $26, $26, $26, MTILE_PALETTE_0 ;mountain middle bottom
-  MTileDefine $24, $44, $24, $44, MTILE_PALETTE_0 ;bridge guardrail
-  MTileDefine $24, $CF, $CF, $24, MTILE_PALETTE_0 ;chain
-  MTileDefine $3E, $4E, $3F, $4F, MTILE_PALETTE_0 ;tall tree top, top half
-  MTileDefine $3E, $4C, $3F, $4D, MTILE_PALETTE_0 ;short tree top
-  MTileDefine $4E, $4C, $4F, $4D, MTILE_PALETTE_0 ;tall tree top, bottom half
-  MTileDefine $50, $60, $51, $61, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;warp pipe end left, points up
-  MTileDefine $52, $62, $53, $63, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;warp pipe end right, points up
-  MTileDefine $50, $60, $51, $61, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;decoration pipe end left, points up
-  MTileDefine $52, $62, $53, $63, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;decoration pipe end right, points up
-  MTileDefine $70, $70, $71, $71, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;pipe shaft left
-  MTileDefine $26, $26, $72, $72, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;pipe shaft right
-  MTileDefine $59, $69, $5A, $6A, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;tree ledge left edge
-  MTileDefine $5A, $6C, $5A, $6C, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;tree ledge middle
-  MTileDefine $5A, $6A, $5B, $6B, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;tree ledge right edge
-  MTileDefine $A0, $B0, $A1, $B1, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;mushroom left edge
-  MTileDefine $A2, $B2, $A3, $B3, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;mushroom middle
-  MTileDefine $A4, $B4, $A5, $B5, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;mushroom right edge
-  MTileDefine $54, $64, $55, $65, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe end top
-  MTileDefine $56, $66, $56, $66, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe shaft top
-  MTileDefine $57, $67, $71, $71, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe joint top
-  MTileDefine $74, $84, $75, $85, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe end bottom
-  MTileDefine $26, $76, $26, $76, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe shaft bottom
-  MTileDefine $58, $68, $71, $71, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe joint bottom
-  MTileDefine $8C, $9C, $8D, $9D, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;seaplant
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;blank, used on bricks or blocks that are hit
-  MTileDefine $24, $5F, $24, $6F, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB  ;flagpole ball
-  MTileDefine $7D, $7D, $7E, $7E, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB  ;flagpole shaft
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB  ;blank, used in conjunction with vines
+const behaviorNames = [
+  "none",
+  "coin", "hidden", "vine",
+  "flagpole", "axe", "jumpspring",
+  "pipe_down_left", "pipe_down_right", "pipe_side_top", "pipe_side_bottom",
+  "brick_item", "brick_coins", "qblock", "bumped",
+  "water",
+];
+behaviorNames.forEach((behavior, value) => {
+  a.assign("MTILE_BEHAVIOR_" + behavior.toUpperCase(), value);
+});
 
-MTILE_CURRENT_INDEX .set $40
-  MTileDefine $7D, $7D, $7E, $7E, MTILE_PALETTE_1 ;vertical rope
-  MTileDefine $5C, $24, $5C, $24, MTILE_PALETTE_1 ;horizontal rope
-  MTileDefine $24, $7D, $5D, $6D, MTILE_PALETTE_1 ;left pulley
-  MTileDefine $5E, $6E, $24, $7E, MTILE_PALETTE_1 ;right pulley
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 ;blank used for balance rope
-  MTileDefine $77, $48, $78, $48, MTILE_PALETTE_1 ;castle top
-  MTileDefine $48, $48, $27, $27, MTILE_PALETTE_1 ;castle window left
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 ;castle brick wall
-  MTileDefine $27, $27, $48, $48, MTILE_PALETTE_1 ;castle window right
-  MTileDefine $79, $48, $7A, $48, MTILE_PALETTE_1 ;castle top w/ brick
-  MTileDefine $7B, $27, $7C, $27, MTILE_PALETTE_1 ;entrance top
-  MTileDefine $27, $27, $27, $27, MTILE_PALETTE_1 ;entrance bottom
-  MTileDefine $73, $73, $73, $73, MTILE_PALETTE_1 ;green ledge stump
-  MTileDefine $3A, $4A, $3B, $4B, MTILE_PALETTE_1 ;fence
-  MTileDefine $3C, $3C, $3D, $3D, MTILE_PALETTE_1 ;tree trunk
-  MTileDefine $A6, $4E, $A7, $4F, MTILE_PALETTE_1 ;mushroom stump top
-  MTileDefine $4E, $4E, $4F, $4F, MTILE_PALETTE_1 ;mushroom stump bottom
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;breakable brick w/ line 
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;breakable brick 
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;breakable brick (not used)
-  MTileDefine $82, $92, $83, $93, MTILE_PALETTE_1 | MTILE_SOLID ;cracked rock terrain
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (power-up)
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (vine)
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (star)
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (coins)
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (1-up)
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (power-up)
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (vine)
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (star)
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (coins)
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (1-up)
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 | MTILE_SOLID ;hidden block (1 coin)
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 | MTILE_SOLID ;hidden block (1-up)
-  MTileDefine $80, $90, $81, $91, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;solid block (3-d block)
-  MTileDefine $B6, $B7, $B6, $B7, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;solid block (white wall)
-  MTileDefine $45, $24, $45, $24, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bridge
-  MTileDefine $86, $96, $87, $97, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bullet bill cannon barrel
-  MTileDefine $88, $98, $89, $99, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bullet bill cannon top
-  MTileDefine $94, $94, $95, $95, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bullet bill cannon bottom
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;blank used for jumpspring
-  MTileDefine $24, $48, $24, $48, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;half brick used for jumpspring
-  MTileDefine $8A, $9A, $8B, $9B, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;solid block (water level, green rock)
-  MTileDefine $24, $48, $24, $48, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;half brick (???)
-  MTileDefine $54, $64, $55, $65, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;water pipe top
-  MTileDefine $74, $84, $75, $85, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;water pipe bottom
-  MTileDefine $24, $5F, $24, $6F, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB ;flag ball (residual object)
+const entries = JSON.parse(metatileFile.text).metatiles;
+if (!Array.isArray(entries)) throw new Error("metatiles.json \"metatiles\" must be an array of entries");
 
-MTILE_CURRENT_INDEX .set $80
-  MTileDefine $24, $24, $24, $30, MTILE_PALETTE_2 ;cloud left
-  MTileDefine $31, $25, $32, $25, MTILE_PALETTE_2 ;cloud middle
-  MTileDefine $24, $33, $24, $24, MTILE_PALETTE_2 ;cloud right
-  MTileDefine $24, $24, $40, $24, MTILE_PALETTE_2 ;cloud bottom left
-  MTileDefine $41, $24, $42, $24, MTILE_PALETTE_2 ;cloud bottom middle
-  MTileDefine $43, $24, $24, $24, MTILE_PALETTE_2 ;cloud bottom right
-  MTileDefine $46, $26, $46, $26, MTILE_PALETTE_2 ;water/lava top
-  MTileDefine $26, $26, $26, $26, MTILE_PALETTE_2 ;water/lava
-  MTileDefine $8E, $9E, $8F, $9F, MTILE_PALETTE_2 | MTILE_SOLID | MTILE_BUMP ;cloud level terrain
-  MTileDefine $39, $49, $39, $49, MTILE_PALETTE_2 | MTILE_SOLID | MTILE_BUMP ;bowser's bridge
+const tileLabels = {
+  tl: "MTileTopLeft",
+  bl: "MTileBotLeft",
+  tr: "MTileTopRight",
+  br: "MTileBotRight",
+};
+const tileTables = Object.fromEntries(Object.keys(tileLabels).map(key => [key, Array(256).fill(0)]));
+const attributes = Array(256).fill(0);
+const behaviors = Array(256).fill(0);
+const ids = new Set();
 
-MTILE_CURRENT_INDEX .set $c0
-  MTileDefine $A8, $B8, $A9, $B9, MTILE_PALETTE_3 | MTILE_SOLID ;question block (coin)
-  MTileDefine $A8, $B8, $A9, $B9, MTILE_PALETTE_3 | MTILE_SOLID ;question block (power-up)
-  MTileDefine $AA, $BA, $AB, $BB, MTILE_PALETTE_3 | MTILE_SOLID ;coin
-  MTileDefine $AC, $BC, $AD, $BD, MTILE_PALETTE_3 | MTILE_SOLID ;underwater coin
-  MTileDefine $AE, $BE, $AF, $BF, MTILE_PALETTE_3 | MTILE_SOLID | MTILE_BUMP ;empty block
-  MTileDefine $CB, $CD, $CC, $CE, MTILE_PALETTE_3 | MTILE_SOLID | MTILE_BUMP ;axe
+entries.forEach((entry, index) => {
+  const name = typeof entry?.name === "string" ? ` (${entry.name})` : "";
+  const id = entry?.id === undefined ? "" : `, id ${JSON.stringify(entry.id)}`;
+  const fail = message => {
+    throw new Error(`metatiles.json entry ${index + 1}${name}${id}: ${message}`);
+  };
+  if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+    fail("expected an object");
+  }
+  for (const field of ["id", "name", ...Object.keys(tileLabels), "palette", "flags"]) {
+    if (!Object.hasOwn(entry, field)) {
+      fail(`missing field "${field}"`);
+    }
+  }
 
+  if (typeof entry.name !== "string" || !entry.name.trim()) {
+    fail("name must be a nonempty string");
+  }
+  if (!Number.isInteger(entry.id) || entry.id < 0 || entry.id > 255) {
+    fail("id must be an integer in 0-255");
+  }
+  if (ids.has(entry.id)) {
+    fail("duplicate id");
+  }
+  ids.add(entry.id);
 
-; Create the actual metatile tables.
-; TODO page align them to save a cycle someday lul
-MTileTopLeft:
-.repeat 256, I
-.if .defined(.ident(.sprintf("MTILE_TL_%d", I)))
-  .byte .ident(.sprintf("MTILE_TL_%d", I))
-.else
-  .byte $00
-.endif
-.endrepeat
+  // RenderAreaGraphics reads palette bits from the attribute byte. The vanilla
+  // loader also uses the ID range (e.g. $C0 and up for palette 3).
+  if (!Number.isInteger(entry.palette) || entry.palette < 0 || entry.palette > 3) {
+    fail("palette must be an integer in 0-3");
+  }
+  if ((entry.id >> 6) !== entry.palette) {
+    fail("palette must match the top two bits of the id");
+  }
 
-MTileBotLeft:
-.repeat 256, I
-.if .defined(.ident(.sprintf("MTILE_BL_%d", I)))
-  .byte .ident(.sprintf("MTILE_BL_%d", I))
-.else
-  .byte $00
-.endif
-.endrepeat
+  for (const [field, table] of Object.entries(tileTables)) {
+    const tile = entry[field];
+    if (typeof tile !== "string" || !/^\$[0-9A-F]{2}$/i.test(tile)) {
+      fail(`${field} must be a hex tile id string from "$00" to "$FF"`);
+    }
+    table[entry.id] = parseInt(tile.slice(1), 16);
+  }
 
-MTileTopRight:
-.repeat 256, I
-.if .defined(.ident(.sprintf("MTILE_TR_%d", I)))
-  .byte .ident(.sprintf("MTILE_TR_%d", I))
-.else
-  .byte $00
-.endif
-.endrepeat
+  let attribute = entry.palette << 6;
+  if (!Array.isArray(entry.flags)) fail("flags must be an array");
+  for (const flag of entry.flags) {
+    if (typeof flag !== "string" || !Object.hasOwn(flagBits, flag)) {
+      fail(`unknown flag ${JSON.stringify(flag)}`);
+    }
+    attribute |= flagBits[flag];
+  }
+  attributes[entry.id] = attribute;
 
-MTileBotRight:
-.repeat 256, I
-.if .defined(.ident(.sprintf("MTILE_BR_%d", I)))
-  .byte .ident(.sprintf("MTILE_BR_%d", I))
-.else
-  .byte $00
-.endif
-.endrepeat
+  // Optional, defaults to "none"
+  if (entry.behavior !== undefined) {
+    const behavior = behaviorNames.indexOf(entry.behavior);
+    if (behavior < 0) fail(`unknown behavior ${JSON.stringify(entry.behavior)}`);
+    behaviors[entry.id] = behavior;
+  }
+  // HandleClimbing only sees metatiles that are flagged climb
+  if (["flagpole", "vine"].includes(entry.behavior) && !entry.flags.includes("climb")) {
+    fail(`behavior "${entry.behavior}" requires the climb flag`);
+  }
+});
 
-; THIS TABLE IS IN FIXED MEMORY since its loaded for both level loading and collision code
-.segment "FIXED"
-MTileAttribute:
-.repeat 256, I
-.if .defined(.ident(.sprintf("MTILE_AT_%d", I)))
-  .byte .ident(.sprintf("MTILE_AT_%d", I))
-.else
-  .byte $00
-.endif
-.endrepeat
+for (const [field, label] of Object.entries(tileLabels)) {
+  a.label(label);
+  a.byte(tileTables[field]);
+}
+
+// Level loading and collision code need this table in the fixed bank.
+a.segment("FIXED");
+a.label("MTileAttribute");
+a.byte(attributes);
+a.label("MTileBehavior");
+a.byte(behaviors);
+.jsend
+.popseg

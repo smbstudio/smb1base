@@ -660,13 +660,15 @@ RemoveBridge:
   lda BowserBodyControls
   eor #$01                  ;invert bit to control bowser's feet
   sta BowserBodyControls
-  lda #$22                  ;put high byte of name table address here for now
-  sta R5 
   ldy BridgeCollapseOffset  ;get bridge collapse offset here
-  lda BridgeCollapseData,y  ;load low byte of name table address and store here
+  lda BridgeCollapseData,y  ;load low byte of name table address
+  sec
+  sbc #$80                  ;the table is for a playfield 4 tile rows lower
   sta R4 
-  ldy VRAM_Buffer1_Offset   ;increment vram buffer offset
-  iny
+  lda #$22                  ;high byte of name table address
+  sbc #$00
+  sta R5 
+  ldy VramQueueIndex        ;get vram buffer offset
   ldx #$0c                  ;set offset for tile data for sub to draw blank metatile
   farcall RemBridge             ;do sub here to remove bowser's bridge metatiles
   ldx ObjectOffset          ;get enemy offset
@@ -1915,6 +1917,7 @@ SetupGFB: sta Local_ef                     ;save high byte of spinning thing, mo
           sta R7                      ;also save here
           sec
           sbc #4
+          HudShiftSpriteY
           sta Sprite_Y_Position,y     ;store as Y in OAM data
           lda Enemy_Rel_XPos          ;get relative horizontal coordinate
           sta Sprite_X_Position,y     ;store as X in OAM data
@@ -1987,6 +1990,7 @@ SetVFbr:
          sta R7                   ;also store here for now
          sec
          sbc #4                   ; offset the drawn sprite by 4 to account for 8x16 sprite position
+         HudShiftSpriteY
          sta Sprite_Y_Position,y  ;store as Y coordinate here
 
 FirebarCollision:
@@ -2585,30 +2589,33 @@ DrawEraseRope:
          ldy ObjectOffset            ;get enemy object offset
          lda Enemy_Y_Speed,y         ;check to see if current platform is
          ora Enemy_Y_MoveForce,y     ;moving at all
-         beq ExitRp                  ;if not, skip all of this and branch to leave
-         ldx VRAM_Buffer1_Offset     ;get vram buffer offset
-         cpx #$20                    ;if offset beyond a certain point, go ahead
-         bcs ExitRp                  ;and skip this, branch to leave
+         bne PlatformMoving
+         jmp ExitRp                  ;if not, skip all of this and branch to leave
+PlatformMoving:
+         ldx VramQueueIndex          ;get vram buffer offset
+         VramSkipIfQueueAtLimitX VRAM_LIMIT_CLIMB_ROPE, ExitRp ;skip if offset beyond a certain point
+         lda #$00
+         sta VramQueue+12,x          ;new terminator first
+         stx M0                      ;keep one buffer offset for the whole packet pair
          lda Enemy_Y_Speed,y
          pha                         ;save two copies of vertical speed to stack
          pha
          jsr SetupPlatformRope       ;do a sub to figure out where to put new bg tiles
-         lda R1                      ;write name table address to vram buffer
-         sta VRAM_Buffer1,x          ;first the high byte, then the low
+         lda R1                      ;the first high byte publishes both packets,
+         sta M1                      ;so it is written last
          lda R0 
-         sta VRAM_Buffer1+1,x
-         lda #$02                    ;set length for 2 bytes
-         sta VRAM_Buffer1+2,x
+         sta VramQueue+1,x
+         VramStoreEntry 2, VramQueue+2, x
          lda Enemy_Y_Speed,y         ;if platform moving upwards, branch 
          bmi EraseR1                 ;to do something else
          lda #BALANCE_PLATFORM_ROPE_1
-         sta VRAM_Buffer1+3,x        ;otherwise put tile numbers for left
+         sta VramQueue+4,x           ;otherwise put tile numbers for left
          lda #BALANCE_PLATFORM_ROPE_2 ;and right sides of rope in vram buffer
-         sta VRAM_Buffer1+4,x
+         sta VramQueue+5,x
          jmp OtherRope               ;jump to skip this part
 EraseR1: lda #$24                    ;put blank tiles in vram buffer
-         sta VRAM_Buffer1+3,x        ;to erase rope
-         sta VRAM_Buffer1+4,x
+         sta VramQueue+4,x           ;to erase rope
+         sta VramQueue+5,x
 
 OtherRope:
          lda Enemy_State,y           ;get offset of other platform from state
@@ -2617,27 +2624,26 @@ OtherRope:
          eor #$ff                    ;invert bits to reverse speed
          jsr SetupPlatformRope       ;do sub again to figure out where to put bg tiles  
          lda R1                      ;write name table address to vram buffer
-         sta VRAM_Buffer1+5,x        ;this time we're doing putting tiles for
+         sta VramQueue+6,x           ;this time we're doing putting tiles for
          lda R0                      ;the other platform
-         sta VRAM_Buffer1+6,x
-         lda #$02
-         sta VRAM_Buffer1+7,x        ;set length again for 2 bytes
+         sta VramQueue+7,x
+         VramStoreEntry 2, VramQueue+8, x
          pla                         ;pull first copy of vertical speed from stack
          bpl EraseR2                 ;if moving upwards (note inversion earlier), skip this
          lda #BALANCE_PLATFORM_ROPE_1
-         sta VRAM_Buffer1+8,x        ;otherwise put tile numbers for left
+         sta VramQueue+10,x          ;otherwise put tile numbers for left
          lda #BALANCE_PLATFORM_ROPE_2 ;and right sides of rope in vram
-         sta VRAM_Buffer1+9,x        ;transfer buffer
+         sta VramQueue+11,x          ;transfer buffer
          jmp EndRp                   ;jump to skip this part
 EraseR2: lda #$24                    ;put blank tiles in vram buffer
-         sta VRAM_Buffer1+8,x        ;to erase rope
-         sta VRAM_Buffer1+9,x
-EndRp:   lda #$00                    ;put null terminator at the end
-         sta VRAM_Buffer1+10,x
-         lda VRAM_Buffer1_Offset     ;add ten bytes to the vram buffer offset
+         sta VramQueue+10,x          ;to erase rope
+         sta VramQueue+11,x
+EndRp:   lda M1
+         sta VramQueue,x             ;publish
+         txa                         ;add twelve bytes to the vram buffer offset
          clc                         ;and store
-         adc #10
-         sta VRAM_Buffer1_Offset
+         adc #12
+         sta VramQueueIndex
 ExitRp:  ldx ObjectOffset            ;get enemy object buffer offset and leave
          rts
 
@@ -2668,7 +2674,15 @@ GetLRp: pha                     ;save modified horizontal coordinate to stack
         adc #$08                ;add eight to vertical coordinate and
         tax                     ;save as X
 GetHRp: txa                     ;move vertical coordinate to A
-        ldx VRAM_Buffer1_Offset ;get vram buffer offset
+        sec
+        sbc #$20                ;name table row 0 is the top of the playfield
+        bcc HideRp              ;above the playfield
+        cmp #$d0
+        bcc SetRpY
+          sbc #$10              ;keep ropes that go off the bottom on the last rows
+          bcs SetRpY            ;unconditional
+HideRp: lda #$d0                ;rows 26-27 are never shown
+SetRpY: ldx M0                  ;get vram buffer offset
         asl
         rol                     ;rotate d7 to d0 and d6 into carry
         pha                     ;save modified vertical coordinate to stack
@@ -2687,13 +2701,7 @@ GetHRp: txa                     ;move vertical coordinate to A
         clc
         adc R0                  ;add to horizontal part saved here
         sta R0                  ;save as name table low byte
-        lda Enemy_Y_Position,y
-        cmp #$e8                ;if vertical position not below the
-        bcc ExPRp               ;bottom of the screen, we're done, branch to leave
-        lda R0 
-        and #%10111111          ;mask out d6 of low byte of name table address
-        sta R0 
-ExPRp:  rts                     ;leave!
+        rts                     ;leave!
 
 InitPlatformFall:
       tya                        ;move offset of other platform from Y to X

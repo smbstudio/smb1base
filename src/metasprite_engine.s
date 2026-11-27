@@ -528,6 +528,7 @@ DrawSprite:
 SkipVerticalFlipCheck:
     lda SprObject_Y_Position,y
 SetYOffset:
+  HudShiftMetaspriteY Yhi
   sta Ylo
 
   lda VFlip
@@ -701,9 +702,7 @@ Yhi = R7
     sbc #$01
     sta FloateyNum_Y_Pos,x       ;otherwise subtract one and store as new
 SetupNumSpr:
-  sta Ylo
-  lda #1
-  sta Yhi
+  HudStoreFloateyY Ylo, Yhi
   lda #0
   sta Atr
   sta Xhi

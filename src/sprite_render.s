@@ -68,6 +68,7 @@ ChkFTop:
       lda #$f8
       sta Sprite_Y_Position,y    ;otherwise move sprite offscreen
   :
+    HudShiftOamY                 ;the check above needs world Y, so shift afterwards
     iny                        ;move offset to next OAM data
     iny
     iny
@@ -87,15 +88,15 @@ VineYPosAdder:
   ldx ObjectOffset          ;get enemy buffer offset
   lda Enemy_OffscreenBits   ;check offscreen information
   asl
-  bcc Exit
+  bcc SprObjectOffscrChkExit
     lda Enemy_ID,x
     cmp #Podoboo              ;check enemy identifier for podoboo
-    beq Exit                  ;skip this part if found, we do not want to erase podoboo!
+    beq SprObjectOffscrChkExit                  ;skip this part if found, we do not want to erase podoboo!
       lda Enemy_Y_HighPos,x     ;check high byte of vertical position
       cmp #$02                  ;if not yet past the bottom of the screen, branch
-      bne Exit
+      bne SprObjectOffscrChkExit
         jmp EraseEnemyObject      ;what it says
-Exit:
+SprObjectOffscrChkExit:
   rts
 .endproc
 
@@ -290,11 +291,11 @@ Noop:
   lda #%00100000              ;set background priority bit in sprite
   sta Enemy_SprAttrib,x       ;attributes to give illusion of being inside pipe
   lda TimerControl
-  bne Exit                    ; Just use the previous metasprite and leave if we aren't moving
+  bne ProcessPiranhaPlantExit                    ; Just use the previous metasprite and leave if we aren't moving
     lda PiranhaPlant_Y_Speed,x
     bmi DrawPiranha           ;if piranha plant moving upwards, branch
       lda EnemyFrameTimer,x
-      bne Exit                ;if timer for movement expired, branch
+      bne ProcessPiranhaPlantExit                ;if timer for movement expired, branch
 DrawPiranha:
   ldy #METASPRITE_PIRANHA_MOUTH_OPEN
     lda FrameCounter
@@ -304,7 +305,7 @@ DrawPiranha:
 DrawSprite:
   tya
   sta EnemyMetasprite,x
-Exit:
+ProcessPiranhaPlantExit:
   rts
 .endproc
 
@@ -323,16 +324,16 @@ Exit:
     lda Enemy_SprAttrib,x
     ora #%10000000
     sta Enemy_SprAttrib,x
-    bne Exit ; unconditional
+    bne ProcessGoombaExit ; unconditional
 GmbaAnim:
   and #%00100000        ;check for d5 set in enemy object state
   ora TimerControl      ;or timer disable flag set
-  bne Exit              ;if either condition true, do not animate goomba
+  bne ProcessGoombaExit              ;if either condition true, do not animate goomba
     lda FrameCounter
     and #%00001000        ;check for every eighth frame
-    bne Exit
+    bne ProcessGoombaExit
       ldy #METASPRITE_GOOMBA_WALKING_2
-Exit:
+ProcessGoombaExit:
   tya
   sta EnemyMetasprite,x
   rts
@@ -685,14 +686,14 @@ WriteMetasprite:
 CheckReplacement:
   lda Block_Metatile,x          ;check replacement metatile
   cmp #$c4                      ;if not used block metatile, then
-  bne Exit                 ;branch ahead to use current graphics
+  bne DrawBlockExit                 ;branch ahead to use current graphics
     ldy #METASPRITE_MISC_BLOCK
     lda AreaType
     cmp #1
-    beq Exit
+    beq DrawBlockExit
       lda #1
       sta Block_SprAttrib,x
-Exit:
+DrawBlockExit:
   tya
   sta BlockMetasprite,x
   rts
@@ -731,6 +732,7 @@ AllocSpr 4
   dey
   dey                        ;decrement offset to Y coordinate
   lda Block_Rel_YPos         ;get first block object's relative vertical coordinate
+  HudShiftSpriteY
   jsr DumpTwoSpr             ;do sub to dump current Y coordinate into two sprites
   lda Block_Rel_XPos         ;get first block object's relative horizontal coordinate
   sta Sprite_X_Position,y    ;save into X coordinate of first sprite
@@ -744,6 +746,7 @@ AllocSpr 4
   adc #$06                   ;plus 6 pixels to position second brick chunk correctly
   sta Sprite_X_Position+4,y  ;save into X coordinate of second sprite
   lda Block_Rel_YPos+1       ;get second block object's relative vertical coordinate
+  HudShiftSpriteY
   sta Sprite_Y_Position+8,y
   sta Sprite_Y_Position+12,y ;dump into Y coordinates of third and fourth sprites
   lda Block_Rel_XPos+1       ;get second block object's relative horizontal coordinate
@@ -769,14 +772,14 @@ AllocSpr 4
     jsr DumpTwoSpr             ;otherwise move top sprites offscreen
 :
   lda R0                     ;if relative position on left side of screen,
-  bpl Exit                 ;go ahead and leave
+  bpl DrawBrickChunksExit                 ;go ahead and leave
   lda Sprite_X_Position,y    ;otherwise compare left-side X coordinate
   cmp Sprite_X_Position+4,y  ;to right-side X coordinate
-  bcc Exit                 ;branch to leave if less
+  bcc DrawBrickChunksExit                 ;branch to leave if less
     lda #$f8                   ;otherwise move right half of sprites offscreen
     sta Sprite_Y_Position+4,y
     sta Sprite_Y_Position+12,y
-Exit:
+DrawBrickChunksExit:
   rts                        ;leave
 .endproc
 ;-------------------------------------------------------------------------------------
@@ -861,7 +864,8 @@ DrawSmallPlatform:
        cpx #$20                    ;if vertical coordinate below status bar,
        bcs TopSP                   ;do not mess with it
        lda #$f8                    ;otherwise move first three sprites offscreen
-TopSP: jsr DumpThreeSpr            ;dump vertical coordinate into Y coordinates
+TopSP: HudShiftSpriteY
+       jsr DumpThreeSpr            ;dump vertical coordinate into Y coordinates
        pla                         ;pull from stack
        clc
        adc #$80                    ;add 128 pixels
@@ -869,7 +873,8 @@ TopSP: jsr DumpThreeSpr            ;dump vertical coordinate into Y coordinates
        cpx #$20                    ;if below status bar (taking wrap into account)
        bcs BotSP                   ;then do not change altered coordinate
        lda #$f8                    ;otherwise move last three sprites offscreen
-BotSP: sta Sprite_Y_Position+12,y  ;dump vertical coordinate + 128 pixels
+BotSP: HudShiftSpriteY
+       sta Sprite_Y_Position+12,y  ;dump vertical coordinate + 128 pixels
        sta Sprite_Y_Position+16,y  ;into Y coordinates
        sta Sprite_Y_Position+20,y
        lda Enemy_OffscreenBits     ;get offscreen bits
@@ -908,7 +913,7 @@ ExSPl: ldx ObjectOffset            ;get enemy object offset and leave
   sta EnemyMetasprite,x
 
   lda FlagpoleCollisionYPos
-  beq Exit
+  beq FlagpoleGfxHandlerExit
     ; there is no need to un-hardcode the floatey number as Mario can only interact 
     ; with one flagpole
     lda MiscMetasprite+5
@@ -932,7 +937,7 @@ ExSPl: ldx ObjectOffset            ;get enemy object offset and leave
 
     lda FlagpoleFNum_Y_Pos
     sta Misc_Y_Position+5
-Exit:
+FlagpoleGfxHandlerExit:
   rts
 
 FlagpoleScoreNumTiles:
