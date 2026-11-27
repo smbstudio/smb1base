@@ -1,60 +1,38 @@
+HUD_LABEL_ADDR = $2780      ;lower half, row 28
+HUD_SCORE_ADDR = $27a0      ;lower half, row 29
 
-HUD_TEXT_ADDR = $2040
-
-HUD_IRQ_LINE = $1f
-HUD_SPLIT_Y = 32
+; Scanlines 0-15 upper half, 16-31 lower half, 32-239 playfield
+HUD_IRQ_LINE = 15
+HUD_IRQ_LINE_2 = 31
 .if MAPPER_MMC3
-  HUD_SPLIT_DELAY = 40 - 15
+  HUD_SPLIT_DELAY_1 = 37 - 15
+  HUD_SPLIT_DELAY_2 = 47 - 15
 .else
-  HUD_SPLIT_DELAY = 15 - 15
+  HUD_SPLIT_DELAY_1 = 15 - 15
+  HUD_SPLIT_DELAY_2 = 21 - 15
 .endif
 
-.macro HudReserveRam
+.macro HudFirstSplit
+    HudSetNextIRQ HUD_IRQ_LINE_2, HUD_IRQ_LINE
+    HudSplitHalf 1, HUD_SPLIT_DELAY_1
 .endmacro
 
-.macro HudIrqHandler
-  pha
-  phx
-    MAPPER_IRQ_ACK
-    HudScrollSplit HUD_SPLIT_Y, HUD_SPLIT_DELAY
-  plx
-  pla
-  rti
+.macro HudSecondSplit
+    HudSplitPlayfield 0, HUD_SPLIT_DELAY_2
 .endmacro
 
-.macro HudNmiLagFrame
-    lda DisableScreenFlag
-    bne :+
-      SetScanlineIRQ #HUD_IRQ_LINE
-      lda Mirror_PPUCTRL
-      and #%11111110            ;alter name table address to be $2800
-      sta PPUCTRL              ;(essentially $2000) but save other bits
-      lda #0
-      sta PPUSCROLL
-      sta PPUSCROLL
-    :
-.endmacro
-
-.macro HudNmiSetScroll
-.local SkipSplit
-  lda HorizontalScroll
-  sta IrqNewScroll
-  ; lda Mirror_PPUCTRL
-  ; sta IrqScrollBit
-  lda Sprite0HitDetectFlag  ;check for flag here
-  beq SkipSplit
-    SetScanlineIRQ #HUD_IRQ_LINE
-    ; cli just in case NMI runs late
-    cli
-SkipSplit:
-  lda Mirror_PPUCTRL
-  sta IrqPPUCTRL
-  ; and also reset the flags for the HUD
-  and #%11111100
+; upper half of the HUD
+.macro HudSetFrameScroll
+  lda IrqPPUCTRL
+  and #%11111100            ;name table 0
   sta PPUCTRL
+  lda #0
+  sta PPUSCROLL
+  lda #HUD_NT_Y
+  sta PPUSCROLL
 .endmacro
 
-; The playfield is not moved, so sprites keep their world Y
+; The playfield is drawn at its world Y, so sprites are not moved
 .macro HudShiftSpriteY
 .endmacro
 

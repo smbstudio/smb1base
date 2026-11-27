@@ -101,9 +101,25 @@ FinializeMarioInit:
 clabel UpdateScreen
 
 WriteBufferToScreen:
-  sta PPUADDR           ;store high byte of vram address
+; The title screen data comes from the original game, where the playfield starts 4 tile
+; rows lower, so move each address up to match.
+; kinda jank but keeps compatibility with existing title screen editing tools 
+  tax                   ;high byte of vram address
   iny
   lda (NmiR0),y               ;load next byte (second)
+  cpx #$23
+  bcc TileAddr
+    cmp #$c0
+    bcc TileAddr
+      sbc #$08          ;attribute table (carry is set)
+      bcs WriteAddr     ;unconditional
+TileAddr:
+  sec
+  sbc #$80
+  bcs WriteAddr
+    dex
+WriteAddr:
+  stx PPUADDR
   sta PPUADDR           ;store low byte of vram address
   iny
   lda (NmiR0),y               ;load next byte (third)
@@ -522,39 +538,39 @@ BowserPaletteData:
   .byte $00
 
 MarioThanksMessage:
-  VramBuf $2548, $10
+  VramBuf $24c8, $10
   .byte "THANK YOU MARIO!"
   .byte $00
 
 LuigiThanksMessage:
-  VramBuf $2548, $10
+  VramBuf $24c8, $10
   .byte "THANK YOU LUIGI!"
   .byte $00
 
 MushroomRetainerSaved:
-  VramBuf $25c5, $16
+  VramBuf $2545, $16
   .byte "BUT OUR PRINCESS IS IN"
-  VramBuf $2605, $0f
+  VramBuf $2585, $0f
   .byte "ANOTHER CASTLE!"
   .byte $00
 
 PrincessSaved1:
-  VramBuf $25a7, $13
+  VramBuf $2527, $13
   .byte "YOUR QUEST IS OVER."
   .byte $00
 
 PrincessSaved2:
-  VramBuf $25e3, $1b
+  VramBuf $2563, $1b
   .byte "WE PRESENT YOU A NEW QUEST."
   .byte $00
 
 WorldSelectMessage1:
-  VramBuf $264a, $0d
+  VramBuf $25ca, $0d
   .byte "PUSH BUTTON B"
   .byte $00
 
 WorldSelectMessage2:
-  VramBuf $2688, $11
+  VramBuf $2608, $11
   .byte "TO SELECT A WORLD"
   .byte $00
 RomPacketsEnd:

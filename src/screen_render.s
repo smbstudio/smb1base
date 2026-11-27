@@ -137,7 +137,7 @@ WriteBottomStatusLine:
   ldx VramQueueIndex
   lda #$00                ;new terminator first
   sta VramQueue+7,x
-  lda #<(HUD_TEXT_ADDR+$33) ;write address for world-area number on screen
+  lda #<(HUD_SCORE_ADDR+$13) ;write address for world-area number on screen
   sta VramQueue+1,x
   VramStoreEntry 3, VramQueue+2, x
   ldy WorldNumber         ;first the world number
@@ -150,7 +150,7 @@ WriteBottomStatusLine:
   iny                     ;increment for proper number display
   tya
   sta VramQueue+6,x
-  lda #>HUD_TEXT_ADDR     ;publish
+  lda #>HUD_SCORE_ADDR    ;publish
   sta VramQueue,x
   txa                     ;move the buffer offset up by 7 bytes
   clc
@@ -423,7 +423,7 @@ ExitIcon:
   sta VramQueueIndex
   rts
 MushroomIconData:
-  VramBuf $a249, 3     ;d15 set: vertical
+  VramBuf $a1c9, 3     ;d15 set: vertical
   .byte $2a, $24, $24, $00
 .endproc
 
@@ -551,63 +551,64 @@ TopStatusBarLine:
 ; jroweboy: moved the attribute writes first which fixes a glitchy transition between levels.
 ; if the last byte written in nmi is in the attribute tables, it affects the scroll for the
 ; next frame, so this works around it by making sure attributes aren't last.
-  VramFill $23c0, 63, $aa ; attribute table data, clears name table 0 to palette 2
-  VramBuf $23c2, 1        ; attribute table data, used for coin icon in status bar
-  .byte $ea
-  VramBuf HUD_TEXT_ADDR+$03, 5
+  VramFill $23c0, 64, $aa ; attribute table data, clears name table 0 to palette 2
+  VramFill $27f8, 8, $aa  ; lower half of the status bar
+  VramBuf $27fa, 1        ; attribute table data, used for coin icon in status bar
+  .byte $ae
+  VramBuf HUD_LABEL_ADDR+$03, 5
 TopStatusName:
   .byte "MARIO"
-  VramBuf HUD_TEXT_ADDR+$12, 11
+  VramBuf HUD_LABEL_ADDR+$12, 11
   .byte "WORLD  TIME"
-  VramBuf HUD_TEXT_ADDR+$28, 5
+  VramBuf HUD_SCORE_ADDR+$08, 5
   .byte "0  ", $2e, $29      ; score trailing digit and coin display
 
 WorldLivesDisplay:
-  VramBuf $23dc, 1        ; attribute table data for crown if more than 9 lives
+  VramBuf $23d4, 1        ; attribute table data for crown if more than 9 lives
   .byte $ba
-  VramBuf $21cd, 7        ; cross with spaces used on
+  VramBuf $214d, 7        ; cross with spaces used on
 LivesData:
   .byte $24, $24, $29, $24, $24, $24, $24 ; lives display
-  VramBuf $214b, 9
+  VramBuf $20cb, 9
 LivesWorldData:
   .byte "WORLD  - "
-  VramFill $220c, 7, $24  ; possibly used to clear time up
+  VramFill $218c, 7, $24  ; possibly used to clear time up
 
 TwoPlayerTimeUp:
 ; jroweboy since we reordered the attribute writes to fix a glitchy transition
 ; we need to pad out the time up and game over messages with a blank first packet
-  VramBuf $21cd, 5
+  VramBuf $214d, 5
   .byte "     "
-  VramBuf $21cd, 5
+  VramBuf $214d, 5
 TimeUpName:
   .byte "MARIO"
 OnePlayerTimeUp:
-  VramBuf $220c, 7
+  VramBuf $218c, 7
   .byte "TIME UP"
 
 TwoPlayerGameOver:
-  VramBuf $21cd, 5
+  VramBuf $214d, 5
   .byte "     "
-  VramBuf $21cd, 5
+  VramBuf $214d, 5
 GameOverName:
   .byte "MARIO"
 OnePlayerGameOver:
-  VramBuf $220b, 9
+  VramBuf $218b, 9
   .byte "GAME OVER"
 
 WarpZoneWelcome:
-  VramBuf $2584, 21
+  VramBuf $2504, 21
   .byte "WELCOME TO WARP ZONE!"
-  VramBuf $2625, 1        ; placeholder for left pipe
+  VramBuf $25a5, 1        ; placeholder for left pipe
 WarpPipeLeft:
   .byte $24
-  VramBuf $262d, 1        ; placeholder for middle pipe
+  VramBuf $25ad, 1        ; placeholder for middle pipe
 WarpPipeMiddle:
   .byte $24
-  VramBuf $2635, 1        ; placeholder for right pipe
+  VramBuf $25b5, 1        ; placeholder for right pipe
   .byte $24
-  VramFill $27d9, 6, $aa  ; attribute data
-  VramFill $27e1, 5, $aa
+  VramFill $27d1, 6, $aa  ; attribute data
+  VramFill $27d9, 5, $aa
 WarpZoneWelcomeEnd:
 
 ; Offsets into the buffer of the data that gets patched after a message is copied
@@ -852,8 +853,6 @@ SaveHAdder:
   lda #$00
   sta R5                ;initialize temp high byte
   lda R2                ;get vertical high nybble offset used in block buffer routine
-  clc
-  adc #$20              ;add 32 pixels for the status bar
   asl
   rol R5                ;shift and rotate d7 onto d0 and d6 into carry
   asl
@@ -1000,8 +999,8 @@ SetAttrib:
             lda CurrentNTAddr_Low        ;check current low byte
             and #%00011111               ;if no wraparound, just skip this part
             bne ExitDrawM
-            lda #$80                     ;if wraparound occurs, make sure low byte stays
-            sta CurrentNTAddr_Low        ;just under the status bar
+            lda #$00                     ;if wraparound occurs, go back to
+            sta CurrentNTAddr_Low        ;the top of the playfield
             lda CurrentNTAddr_High       ;and then invert d2 of the name table address high
             eor #%00000100               ;to move onto the next appropriate name table
             sta CurrentNTAddr_High
@@ -1027,8 +1026,8 @@ SetATHigh:   and #%00000100           ;mask out all other bits
              lda R1                   ;get low byte - 4, divide by 4, add offset for
              lsr                      ;attribute table and store
              lsr
-             adc #$c0                 ;we should now have the appropriate block of
-             sta R1                   ;attribute table in our temp address
+             adc #$c0 - 8             ;one row early, as the loop adds a row before
+             sta R1                   ;each write
 ATTRIB_PACKET_SIZE = 5
 ATTRIB_SET_SIZE = 7 * ATTRIB_PACKET_SIZE
 .assert ATTRIB_SET_SIZE < VRAM_BUFFER_SIZE - VRAM_COLUMN_BASE, error, "Attribute packets overflow the column region"
@@ -1043,7 +1042,7 @@ AttribLoop:  cpx #$00                 ;the first high byte publishes the whole s
              sta VramBuffer,y         ;store high byte of attribute table address
 SkipHigh:    lda R1 
              clc                      ;get low byte, add 8 because we want to start
-             adc #$08                 ;below the status bar, and store
+             adc #$08                 ;and store
              sta VramBuffer+1,y
              sta R1                   ;also store in temp again
              VramStoreEntry 1, VramBuffer+2, y

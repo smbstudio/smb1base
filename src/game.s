@@ -704,13 +704,13 @@ StartPage:
   sta CurrentPageLoc       ;also set as current page
   sta BackloadingFlag      ;set flag here if halfway page or saved entry page number found
   jsr GetScreenPosition    ;get pixel coordinates for screen borders
-  ldy #$20                 ;if on odd numbered page, use $2480 as start of rendering
-  and #%00000001           ;otherwise use $2080, this address used later as name table
+  ldy #$20                 ;if on odd numbered page, use $2400 as start of rendering
+  and #%00000001           ;otherwise use $2000, this address used later as name table
   beq SetInitNTHigh        ;address for rendering of game area
     ldy #$24
 SetInitNTHigh:
   sty CurrentNTAddr_High   ;store name table address
-  ldy #$80
+  ldy #$00
   sty CurrentNTAddr_Low
   asl                      ;store LSB of page number in high nybble
   asl                      ;of block buffer column position
@@ -931,7 +931,7 @@ GoContinue:
 .endproc
 clabel WSelectBufferTemplate
 WSelectBufferTemplate:
-      VramBuf $2073, 1
+      VramBuf HUD_SCORE_ADDR+$13, 1
       .byte $00, $00
 
 
@@ -1297,9 +1297,9 @@ DigitPLoop:
   tax
   ldy R2
   lda VramQueue+1,y        ;check which row of the screen this is for
-  cmp #$f0
+  cmp #<TOP_SCORE_ADDR
   beq TopScoreRow
-    cmp #<(HUD_TEXT_ADDR+$22)
+    cmp #<(HUD_SCORE_ADDR+$02)
     bne ScoreRowDone
     lda VramQueue+4,y        ;zero suppress the highest digit of a score
     bne :+
@@ -1307,7 +1307,7 @@ DigitPLoop:
       sta VramQueue+4,y
     :
 ScoreRowDone:
-    lda #>HUD_TEXT_ADDR      ;put in the status bar by default
+    lda #>HUD_SCORE_ADDR     ;put in the status bar by default
     bne Publish              ;unconditional
 TopScoreRow:
   lda VramQueue+4,y
@@ -1315,7 +1315,7 @@ TopScoreRow:
     lda #$24
     sta VramQueue+4,y
   :
-  lda #$22                 ;top score on the title screen goes further down
+  lda #>TOP_SCORE_ADDR     ;top score on the title screen goes further down
 Publish:
   sta VramQueue,y
   stx VramQueueIndex       ;store it in case we want to use it again
@@ -1328,18 +1328,20 @@ ExitOutputN:
 ;$02 - used as temp vram offset
 ;$03 - used to store length of status bar number
 
+TOP_SCORE_ADDR = $2270
+
 ;status bar name table offset, length and entry word
 .macro StatusRow lo, len
   .byte lo, len
   .word VramBufEntry(len)
 .endmacro
 StatusBarData:
-  StatusRow $f0, 6 ; top score display on title screen
-  StatusRow <(HUD_TEXT_ADDR+$22), 6 ; player score
-  StatusRow <(HUD_TEXT_ADDR+$22), 6
-  StatusRow <(HUD_TEXT_ADDR+$2d), 2 ; coin tally
-  StatusRow <(HUD_TEXT_ADDR+$2d), 2
-  StatusRow <(HUD_TEXT_ADDR+$3a), 3 ; game timer
+  StatusRow <TOP_SCORE_ADDR, 6 ; top score display on title screen
+  StatusRow <(HUD_SCORE_ADDR+$02), 6 ; player score
+  StatusRow <(HUD_SCORE_ADDR+$02), 6
+  StatusRow <(HUD_SCORE_ADDR+$0d), 2 ; coin tally
+  StatusRow <(HUD_SCORE_ADDR+$0d), 2
+  StatusRow <(HUD_SCORE_ADDR+$1a), 3 ; game timer
 
 StatusBarOffset:
   .byte TopScoreDisplay + TopScoreLastIndex - DisplayDigits + 1

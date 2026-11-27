@@ -1,78 +1,40 @@
+HUD_LABEL_ADDR = $23a0      ;upper half, row 29
+HUD_SCORE_ADDR = $2780      ;lower half, row 28
 
-HUD_TEXT_ADDR = $2020
+HUD_SCROLL_Y = 32
 
-HUD_SCROLL_Y = 32           ;playfield scroll and how far sprites move up to match
 HUD_IRQ_LINE = 207
-HUD_SPLIT_Y = 0
+HUD_IRQ_LINE_2 = 223
 .if MAPPER_MMC3
-  HUD_SPLIT_DELAY = 42 - 15
+  HUD_SPLIT_DELAY_1 = 37 - 15
+  HUD_SPLIT_DELAY_2 = 57 - 15
 .else
-  HUD_SPLIT_DELAY = 15 - 15
+  HUD_SPLIT_DELAY_1 = 15 - 15
+  HUD_SPLIT_DELAY_2 = 30 - 15
 .endif
 
-; these hold the scroll split values for lag frames
-.macro HudReserveRam
-RESERVE HudPlayfieldScroll, 1
-RESERVE HudPlayfieldCtrl, 1
-.endmacro
-
-.macro HudIrqHandler
-  pha
-  phx
-    MAPPER_IRQ_ACK
-    HudScrollSplit HUD_SPLIT_Y, HUD_SPLIT_DELAY
+.macro HudFirstSplit
+    HudSetNextIRQ HUD_IRQ_LINE_2, HUD_IRQ_LINE
+    HudSplitHalf 0, HUD_SPLIT_DELAY_1
     ; Turn off sprites to make sprites disappear when falling into the HUD area
     lda Mirror_PPUMASK
     and #%11101111
     sta PPUMASK
-  plx
-  pla
-  rti
 .endmacro
 
-.macro HudSetPlayfieldScroll
-  lda HudPlayfieldCtrl
-  and #%11111101              ;vertical name table 0
+.macro HudSecondSplit
+    HudSplitHalf 1, HUD_SPLIT_DELAY_2
+.endmacro
+
+; Scroll at the top of the frame: the playfield
+.macro HudSetFrameScroll
+  lda IrqPPUCTRL
+  and #%11111101            ;vertical name table 0
   sta PPUCTRL
   lda HudPlayfieldScroll
   sta PPUSCROLL
-  lda #HUD_SCROLL_Y
-  sta PPUSCROLL
-.endmacro
-
-.macro HudNmiLagFrame
-    lda Mirror_PPUMASK
-    and #%00011000
-    beq :+
-      SetScanlineIRQ #HUD_IRQ_LINE
-      HudSetPlayfieldScroll
-      lda Mirror_PPUMASK
-      sta PPUMASK
-    :
-.endmacro
-
-.macro HudNmiSetScroll
-.local Latch, SkipSplit
-  lda Mirror_PPUCTRL
-  ldx HorizontalScroll
-  ldy Sprite0HitDetectFlag
-  bne Latch
-    ldx #0
-    and #%11111110
-Latch:
-  stx HudPlayfieldScroll
-  sta HudPlayfieldCtrl
-  and #%11111100              ;the status bar is in name table 0
-  sta IrqPPUCTRL
   lda #0
-  sta IrqNewScroll
-  HudSetPlayfieldScroll
-  tya
-  beq SkipSplit
-    SetScanlineIRQ #HUD_IRQ_LINE
-    ; cli just in case NMI runs late
-    cli
-SkipSplit:
+  sta PPUSCROLL
 .endmacro
 
 ; Offset the sprite by the HUD position if its been moved.

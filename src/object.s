@@ -660,11 +660,14 @@ RemoveBridge:
   lda BowserBodyControls
   eor #$01                  ;invert bit to control bowser's feet
   sta BowserBodyControls
-  lda #$22                  ;put high byte of name table address here for now
-  sta R5 
   ldy BridgeCollapseOffset  ;get bridge collapse offset here
-  lda BridgeCollapseData,y  ;load low byte of name table address and store here
+  lda BridgeCollapseData,y  ;load low byte of name table address
+  sec
+  sbc #$80                  ;the table is for a playfield 4 tile rows lower
   sta R4 
+  lda #$22                  ;high byte of name table address
+  sbc #$00
+  sta R5 
   ldy VramQueueIndex        ;get vram buffer offset
   ldx #$0c                  ;set offset for tile data for sub to draw blank metatile
   farcall RemBridge             ;do sub here to remove bowser's bridge metatiles
@@ -2671,7 +2674,15 @@ GetLRp: pha                     ;save modified horizontal coordinate to stack
         adc #$08                ;add eight to vertical coordinate and
         tax                     ;save as X
 GetHRp: txa                     ;move vertical coordinate to A
-        ldx M0                  ;get vram buffer offset
+        sec
+        sbc #$20                ;name table row 0 is the top of the playfield
+        bcc HideRp              ;above the playfield
+        cmp #$d0
+        bcc SetRpY
+          sbc #$10              ;keep ropes that go off the bottom on the last rows
+          bcs SetRpY            ;unconditional
+HideRp: lda #$d0                ;rows 26-27 are never shown
+SetRpY: ldx M0                  ;get vram buffer offset
         asl
         rol                     ;rotate d7 to d0 and d6 into carry
         pha                     ;save modified vertical coordinate to stack
@@ -2690,13 +2701,7 @@ GetHRp: txa                     ;move vertical coordinate to A
         clc
         adc R0                  ;add to horizontal part saved here
         sta R0                  ;save as name table low byte
-        lda Enemy_Y_Position,y
-        cmp #$e8                ;if vertical position not below the
-        bcc ExPRp               ;bottom of the screen, we're done, branch to leave
-        lda R0 
-        and #%10111111          ;mask out d6 of low byte of name table address
-        sta R0 
-ExPRp:  rts                     ;leave!
+        rts                     ;leave!
 
 InitPlatformFall:
       tya                        ;move offset of other platform from Y to X
