@@ -1,4 +1,3 @@
-
 .segment "RENDER"
 
 clabel InitScreen
@@ -1064,186 +1063,101 @@ SetVRAMCtrl: VramSelectSource VramSrcColumn ;upload the column list and leave
              rts
 
 ;-------------------------------------------------------------------------------------
-;METATILE GRAPHICS TABLE
-MTILE_CURRENT_INDEX .set $00
-.macro MTileDefine tl, bl, tr, br, attr
-.ident(.sprintf("MTILE_TL_%d", MTILE_CURRENT_INDEX)) = tl
-.ident(.sprintf("MTILE_BL_%d", MTILE_CURRENT_INDEX)) = bl
-.ident(.sprintf("MTILE_TR_%d", MTILE_CURRENT_INDEX)) = tr
-.ident(.sprintf("MTILE_BR_%d", MTILE_CURRENT_INDEX)) = br
-.ident(.sprintf("MTILE_AT_%d", MTILE_CURRENT_INDEX)) = attr
-MTILE_CURRENT_INDEX .set MTILE_CURRENT_INDEX + 1
-.endmacro
+; Metatile tables are indexed by the same IDs in both level formats.
+; Bits 3-5 of the attribute byte are available for other types of flags
+; TODO: Consider a second set of table entries for extended attributes.
+; TODO: Condense the table by removing palette bits from the ID and renumbering metatiles.
+; Remapping IDs in level_vanilla.s could preserve compatibility with existing level editors.
+; TODO: Page-align the tables to save a cycle on indexed reads.
 
-MTILE_SOLID     = 1 << 0 ; Blocks that are collidable at all
-MTILE_CLIMB     = 1 << 1 ; Climbable blocks
-MTILE_BUMP      = 1 << 2 ; Solid blocks that also make a bump noise when hitting them with your head
-; MTILE_DAMAGE    = 1 << 3 ; unimplemented
-; MTILE_KILL      = 1 << 4 ; unimplemented
-; MTILE_SWIM      = 1 << 5 ; unimplemented
-MTILE_PALETTE_0 = 0 << 6
-MTILE_PALETTE_1 = 1 << 6
-MTILE_PALETTE_2 = 2 << 6
-MTILE_PALETTE_3 = 3 << 6
-; TODO: consider making a second batch of table entries for extended attributes
-; TODO: update the level format to condense the table (remove the palette from bit 6/7 and renumber the metatiles?)
-; could maybe pull this off by changing all of the metatiles in level_vanilla.s without touching the level format (so it should still be possible to use existing level editors)
+.jsinput metatileFile, "metatiles/metatiles.json"
+.pushseg
+.jsbegin
+// Emit the assembly constants from the same bits used to encode attributes.
+const flagBits = { 
+  solid: 1 << 0, 
+  climb: 1 << 1, 
+  bump: 1 << 2 
+};
+for (const [flag, bit] of Object.entries(flagBits)) {
+  a.assign("MTILE_" + flag.toUpperCase(), bit);
+}
 
-MTILE_CURRENT_INDEX .set $00
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_0 ;blank
-  MTileDefine $27, $27, $27, $27, MTILE_PALETTE_0 ;black metatile
-  MTileDefine $24, $24, $24, $30, MTILE_PALETTE_0 ;bush left
-  MTileDefine $31, $25, $32, $25, MTILE_PALETTE_0 ;bush middle
-  MTileDefine $24, $33, $24, $24, MTILE_PALETTE_0 ;bush right
-  MTileDefine $24, $34, $34, $26, MTILE_PALETTE_0 ;mountain left
-  MTileDefine $26, $26, $38, $26, MTILE_PALETTE_0 ;mountain left bottom/middle center
-  MTileDefine $24, $35, $24, $36, MTILE_PALETTE_0 ;mountain middle top
-  MTileDefine $37, $26, $24, $37, MTILE_PALETTE_0 ;mountain right
-  MTileDefine $38, $26, $26, $26, MTILE_PALETTE_0 ;mountain right bottom
-  MTileDefine $26, $26, $26, $26, MTILE_PALETTE_0 ;mountain middle bottom
-  MTileDefine $24, $44, $24, $44, MTILE_PALETTE_0 ;bridge guardrail
-  MTileDefine $24, $CF, $CF, $24, MTILE_PALETTE_0 ;chain
-  MTileDefine $3E, $4E, $3F, $4F, MTILE_PALETTE_0 ;tall tree top, top half
-  MTileDefine $3E, $4C, $3F, $4D, MTILE_PALETTE_0 ;short tree top
-  MTileDefine $4E, $4C, $4F, $4D, MTILE_PALETTE_0 ;tall tree top, bottom half
-  MTileDefine $50, $60, $51, $61, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;warp pipe end left, points up
-  MTileDefine $52, $62, $53, $63, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;warp pipe end right, points up
-  MTileDefine $50, $60, $51, $61, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;decoration pipe end left, points up
-  MTileDefine $52, $62, $53, $63, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;decoration pipe end right, points up
-  MTileDefine $70, $70, $71, $71, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;pipe shaft left
-  MTileDefine $26, $26, $72, $72, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;pipe shaft right
-  MTileDefine $59, $69, $5A, $6A, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;tree ledge left edge
-  MTileDefine $5A, $6C, $5A, $6C, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;tree ledge middle
-  MTileDefine $5A, $6A, $5B, $6B, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;tree ledge right edge
-  MTileDefine $A0, $B0, $A1, $B1, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;mushroom left edge
-  MTileDefine $A2, $B2, $A3, $B3, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;mushroom middle
-  MTileDefine $A4, $B4, $A5, $B5, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;mushroom right edge
-  MTileDefine $54, $64, $55, $65, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe end top
-  MTileDefine $56, $66, $56, $66, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe shaft top
-  MTileDefine $57, $67, $71, $71, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe joint top
-  MTileDefine $74, $84, $75, $85, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe end bottom
-  MTileDefine $26, $76, $26, $76, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe shaft bottom
-  MTileDefine $58, $68, $71, $71, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;sideways pipe joint bottom
-  MTileDefine $8C, $9C, $8D, $9D, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;seaplant
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP ;blank, used on bricks or blocks that are hit
-  MTileDefine $24, $5F, $24, $6F, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB  ;flagpole ball
-  MTileDefine $7D, $7D, $7E, $7E, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB  ;flagpole shaft
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_0 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB  ;blank, used in conjunction with vines
+const entries = JSON.parse(metatileFile.text);
+if (!Array.isArray(entries)) throw new Error("metatiles.json must contain an array of entries");
 
-MTILE_CURRENT_INDEX .set $40
-  MTileDefine $7D, $7D, $7E, $7E, MTILE_PALETTE_1 ;vertical rope
-  MTileDefine $5C, $24, $5C, $24, MTILE_PALETTE_1 ;horizontal rope
-  MTileDefine $24, $7D, $5D, $6D, MTILE_PALETTE_1 ;left pulley
-  MTileDefine $5E, $6E, $24, $7E, MTILE_PALETTE_1 ;right pulley
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 ;blank used for balance rope
-  MTileDefine $77, $48, $78, $48, MTILE_PALETTE_1 ;castle top
-  MTileDefine $48, $48, $27, $27, MTILE_PALETTE_1 ;castle window left
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 ;castle brick wall
-  MTileDefine $27, $27, $48, $48, MTILE_PALETTE_1 ;castle window right
-  MTileDefine $79, $48, $7A, $48, MTILE_PALETTE_1 ;castle top w/ brick
-  MTileDefine $7B, $27, $7C, $27, MTILE_PALETTE_1 ;entrance top
-  MTileDefine $27, $27, $27, $27, MTILE_PALETTE_1 ;entrance bottom
-  MTileDefine $73, $73, $73, $73, MTILE_PALETTE_1 ;green ledge stump
-  MTileDefine $3A, $4A, $3B, $4B, MTILE_PALETTE_1 ;fence
-  MTileDefine $3C, $3C, $3D, $3D, MTILE_PALETTE_1 ;tree trunk
-  MTileDefine $A6, $4E, $A7, $4F, MTILE_PALETTE_1 ;mushroom stump top
-  MTileDefine $4E, $4E, $4F, $4F, MTILE_PALETTE_1 ;mushroom stump bottom
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;breakable brick w/ line 
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;breakable brick 
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;breakable brick (not used)
-  MTileDefine $82, $92, $83, $93, MTILE_PALETTE_1 | MTILE_SOLID ;cracked rock terrain
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (power-up)
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (vine)
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (star)
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (coins)
-  MTileDefine $47, $48, $47, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick with line (1-up)
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (power-up)
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (vine)
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (star)
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (coins)
-  MTileDefine $48, $48, $48, $48, MTILE_PALETTE_1 | MTILE_SOLID ;brick (1-up)
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 | MTILE_SOLID ;hidden block (1 coin)
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 | MTILE_SOLID ;hidden block (1-up)
-  MTileDefine $80, $90, $81, $91, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;solid block (3-d block)
-  MTileDefine $B6, $B7, $B6, $B7, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;solid block (white wall)
-  MTileDefine $45, $24, $45, $24, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bridge
-  MTileDefine $86, $96, $87, $97, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bullet bill cannon barrel
-  MTileDefine $88, $98, $89, $99, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bullet bill cannon top
-  MTileDefine $94, $94, $95, $95, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;bullet bill cannon bottom
-  MTileDefine $24, $24, $24, $24, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;blank used for jumpspring
-  MTileDefine $24, $48, $24, $48, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;half brick used for jumpspring
-  MTileDefine $8A, $9A, $8B, $9B, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;solid block (water level, green rock)
-  MTileDefine $24, $48, $24, $48, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;half brick (???)
-  MTileDefine $54, $64, $55, $65, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;water pipe top
-  MTileDefine $74, $84, $75, $85, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP ;water pipe bottom
-  MTileDefine $24, $5F, $24, $6F, MTILE_PALETTE_1 | MTILE_SOLID | MTILE_BUMP | MTILE_CLIMB ;flag ball (residual object)
+const tileLabels = {
+  tl: "MTileTopLeft",
+  bl: "MTileBotLeft",
+  tr: "MTileTopRight",
+  br: "MTileBotRight",
+};
+const tileTables = Object.fromEntries(Object.keys(tileLabels).map(key => [key, Array(256).fill(0)]));
+const attributes = Array(256).fill(0);
+const ids = new Set();
 
-MTILE_CURRENT_INDEX .set $80
-  MTileDefine $24, $24, $24, $30, MTILE_PALETTE_2 ;cloud left
-  MTileDefine $31, $25, $32, $25, MTILE_PALETTE_2 ;cloud middle
-  MTileDefine $24, $33, $24, $24, MTILE_PALETTE_2 ;cloud right
-  MTileDefine $24, $24, $40, $24, MTILE_PALETTE_2 ;cloud bottom left
-  MTileDefine $41, $24, $42, $24, MTILE_PALETTE_2 ;cloud bottom middle
-  MTileDefine $43, $24, $24, $24, MTILE_PALETTE_2 ;cloud bottom right
-  MTileDefine $46, $26, $46, $26, MTILE_PALETTE_2 ;water/lava top
-  MTileDefine $26, $26, $26, $26, MTILE_PALETTE_2 ;water/lava
-  MTileDefine $8E, $9E, $8F, $9F, MTILE_PALETTE_2 | MTILE_SOLID | MTILE_BUMP ;cloud level terrain
-  MTileDefine $39, $49, $39, $49, MTILE_PALETTE_2 | MTILE_SOLID | MTILE_BUMP ;bowser's bridge
+entries.forEach((entry, index) => {
+  const name = typeof entry?.name === "string" ? ` (${entry.name})` : "";
+  const id = entry?.id === undefined ? "" : `, id ${JSON.stringify(entry.id)}`;
+  const fail = message => {
+    throw new Error(`metatiles.json entry ${index + 1}${name}${id}: ${message}`);
+  };
+  if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+    fail("expected an object");
+  }
+  for (const field of ["id", "name", ...Object.keys(tileLabels), "palette", "flags"]) {
+    if (!Object.hasOwn(entry, field)) {
+      fail(`missing field "${field}"`);
+    }
+  }
 
-MTILE_CURRENT_INDEX .set $c0
-  MTileDefine $A8, $B8, $A9, $B9, MTILE_PALETTE_3 | MTILE_SOLID ;question block (coin)
-  MTileDefine $A8, $B8, $A9, $B9, MTILE_PALETTE_3 | MTILE_SOLID ;question block (power-up)
-  MTileDefine $AA, $BA, $AB, $BB, MTILE_PALETTE_3 | MTILE_SOLID ;coin
-  MTileDefine $AC, $BC, $AD, $BD, MTILE_PALETTE_3 | MTILE_SOLID ;underwater coin
-  MTileDefine $AE, $BE, $AF, $BF, MTILE_PALETTE_3 | MTILE_SOLID | MTILE_BUMP ;empty block
-  MTileDefine $CB, $CD, $CC, $CE, MTILE_PALETTE_3 | MTILE_SOLID | MTILE_BUMP ;axe
+  if (typeof entry.name !== "string" || !entry.name.trim()) {
+    fail("name must be a nonempty string");
+  }
+  if (!Number.isInteger(entry.id) || entry.id < 0 || entry.id > 255) {
+    fail("id must be an integer in 0-255");
+  }
+  if (ids.has(entry.id)) {
+    fail("duplicate id");
+  }
+  ids.add(entry.id);
 
+  // RenderAreaGraphics reads palette bits from the attribute byte. The vanilla
+  // loader also uses the ID range (e.g. $C0 and up for palette 3).
+  if (!Number.isInteger(entry.palette) || entry.palette < 0 || entry.palette > 3) {
+    fail("palette must be an integer in 0-3");
+  }
+  if ((entry.id >> 6) !== entry.palette) {
+    fail("palette must match the top two bits of the id");
+  }
 
-; Create the actual metatile tables.
-; TODO page align them to save a cycle someday lul
-MTileTopLeft:
-.repeat 256, I
-.if .defined(.ident(.sprintf("MTILE_TL_%d", I)))
-  .byte .ident(.sprintf("MTILE_TL_%d", I))
-.else
-  .byte $00
-.endif
-.endrepeat
+  for (const [field, table] of Object.entries(tileTables)) {
+    const tile = entry[field];
+    if (typeof tile !== "string" || !/^\$[0-9A-F]{2}$/i.test(tile)) {
+      fail(`${field} must be a hex tile id string from "$00" to "$FF"`);
+    }
+    table[entry.id] = parseInt(tile.slice(1), 16);
+  }
 
-MTileBotLeft:
-.repeat 256, I
-.if .defined(.ident(.sprintf("MTILE_BL_%d", I)))
-  .byte .ident(.sprintf("MTILE_BL_%d", I))
-.else
-  .byte $00
-.endif
-.endrepeat
+  let attribute = entry.palette << 6;
+  if (!Array.isArray(entry.flags)) fail("flags must be an array");
+  for (const flag of entry.flags) {
+    if (typeof flag !== "string" || !Object.hasOwn(flagBits, flag)) {
+      fail(`unknown flag ${JSON.stringify(flag)}`);
+    }
+    attribute |= flagBits[flag];
+  }
+  attributes[entry.id] = attribute;
+});
 
-MTileTopRight:
-.repeat 256, I
-.if .defined(.ident(.sprintf("MTILE_TR_%d", I)))
-  .byte .ident(.sprintf("MTILE_TR_%d", I))
-.else
-  .byte $00
-.endif
-.endrepeat
+for (const [field, label] of Object.entries(tileLabels)) {
+  a.label(label);
+  a.byte(tileTables[field]);
+}
 
-MTileBotRight:
-.repeat 256, I
-.if .defined(.ident(.sprintf("MTILE_BR_%d", I)))
-  .byte .ident(.sprintf("MTILE_BR_%d", I))
-.else
-  .byte $00
-.endif
-.endrepeat
-
-; THIS TABLE IS IN FIXED MEMORY since its loaded for both level loading and collision code
-.segment "FIXED"
-MTileAttribute:
-.repeat 256, I
-.if .defined(.ident(.sprintf("MTILE_AT_%d", I)))
-  .byte .ident(.sprintf("MTILE_AT_%d", I))
-.else
-  .byte $00
-.endif
-.endrepeat
+// Level loading and collision code need this table in the fixed bank.
+a.segment("FIXED");
+a.label("MTileAttribute");
+a.byte(attributes);
+.jsend
+.popseg
