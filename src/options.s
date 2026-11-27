@@ -110,11 +110,16 @@ bool_option DEBUG_DISPLAY_VISUAL_FRAMETIME
   .fatal "Invalid Options selected"
 .endif
 
-.if HUD_MODE < 0 .or HUD_MODE > 3
+HUD_TOP = 0
+HUD_BOTTOM = 1
+HUD_SPRITE = 2
+HUD_NONE = 3
+
+.if HUD_MODE < HUD_TOP .or HUD_MODE > HUD_NONE
   .error "HUD_MODE must be in the range 0 to 3 (TOP, BOTTOM, SPRITE, NONE)"
   .fatal "Invalid Options selected"
-.elseif HUD_MODE <> 0
-  .error "HUD_MODE: BOTTOM, SPRITE, and NONE are not yet implemented"
+.elseif HUD_MODE > HUD_BOTTOM
+  .error "HUD_MODE: SPRITE and NONE are not yet implemented"
   .fatal "Invalid Options selected"
 .endif
 

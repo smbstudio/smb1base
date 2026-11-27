@@ -1914,6 +1914,7 @@ SetupGFB: sta Local_ef                     ;save high byte of spinning thing, mo
           sta R7                      ;also save here
           sec
           sbc #4
+          HudShiftSpriteY
           sta Sprite_Y_Position,y     ;store as Y in OAM data
           lda Enemy_Rel_XPos          ;get relative horizontal coordinate
           sta Sprite_X_Position,y     ;store as X in OAM data
@@ -1986,6 +1987,7 @@ SetVFbr:
          sta R7                   ;also store here for now
          sec
          sbc #4                   ; offset the drawn sprite by 4 to account for 8x16 sprite position
+         HudShiftSpriteY
          sta Sprite_Y_Position,y  ;store as Y coordinate here
 
 FirebarCollision:

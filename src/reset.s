@@ -10,67 +10,7 @@
 
 .org $ff00
 .proc IrqScrollSplit
-  pha
-  phx
-    MAPPER_IRQ_ACK
-    ; 
-    lda IrqPPUCTRL
-    and #%00000001
-    asl
-    asl
-    sta PPUADDR
-
-    ; Y position to $2005.
-    lda #32
-    sta PPUSCROLL
-
-    ; Prepare for the 2 later writes:
-    ; We reuse new_x to hold (Y & $F8) << 2.
-    and #%11111000
-    asl
-    asl
-    ldx IrqNewScroll
-    sta IrqNewScroll
-
-DELAY_BASE = 15
-.if ::MAPPER_MMC3
-  lda #40 - DELAY_BASE
-.elseif ::MAPPER_MMC5
-  lda #15 - DELAY_BASE
-.endif
-
-; 15—270 cycles of delay: delay=A+15; 0 ≤ A ≤ 255)
-DelayACycles:
-        sec     
-@L:     sbc #5  
-        bcs @L  ;  6 6 6 6 6  FB FC FD FE FF
-        adc #3  ;  2 2 2 2 2  FE FF 00 01 02
-        bcc @4  ;  3 3 2 2 2  FE FF 00 01 02
-        lsr     ;  - - 2 2 2  -- -- 00 00 01
-        beq @5  ;  - - 3 3 2  -- -- 00 00 01
-@4:     lsr     ;  2 2 - - 2  7F 7F -- -- 00
-@5:     bcs @6  ;  2 3 2 3 2  7F 7F 00 00 00
-@6:
-; A page crossing adds a cycle to a taken branch, which would break the delay
-.assert .hibyte(DelayACycles) = .hibyte(@6), lderror, "IrqScrollSplit delay loop crosses a page"
-
-    ; ((Y & $F8) << 2) | (X >> 3) in A for $2006 later.
-    txa
-    lsr
-    lsr
-    lsr
-    ora IrqNewScroll
-
-
-    ; The last two PPU writes must happen during hblank:
-    stx PPUSCROLL
-    sta PPUADDR
-
-    ; Restore new_x.
-    stx IrqNewScroll
-  plx
-  pla
-  rti
+  HudIrqHandler
 .endproc
 
 ;-------------------------------------------------------------------------------------
@@ -231,16 +171,7 @@ InitScroll:
     ; lag frame, prevent the graphics from going bunk by still running
     ; the irq. also run audio to keep it sounding like we didn't lag
     ; Unless the screen is off, then we don't care
-    lda DisableScreenFlag
-    bne :+
-      SetScanlineIRQ #$1f
-      lda Mirror_PPUCTRL
-      and #%11111110            ;alter name table address to be $2800
-      sta PPUCTRL              ;(essentially $2000) but save other bits
-      lda #0
-      sta PPUSCROLL
-      sta PPUSCROLL
-    :
+    HudNmiLagFrame
     ; Force the area/player sprite banks to switch even during lag frames
     jsr BankSwitchCHR
     jsr AudioUpdate
@@ -291,21 +222,7 @@ UploadBuffer:
   jsr VramDrain
 UploadDone:
 
-  lda HorizontalScroll
-  sta IrqNewScroll
-  ; lda Mirror_PPUCTRL
-  ; sta IrqScrollBit
-  lda Sprite0HitDetectFlag  ;check for flag here
-  beq SkipSprite0
-    SetScanlineIRQ #$1f
-    ; cli just in case NMI runs late
-    cli
-SkipSprite0:
-  lda Mirror_PPUCTRL
-  sta IrqPPUCTRL
-  ; and also reset the flags for the HUD
-  and #%11111100
-  sta PPUCTRL
+  HudNmiSetScroll
 
   lda Mirror_PPUMASK       ;copy mirror of $2001 to register
   sta PPUMASK

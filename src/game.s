@@ -1299,7 +1299,7 @@ DigitPLoop:
   lda VramQueue+1,y        ;check which row of the screen this is for
   cmp #$f0
   beq TopScoreRow
-    cmp #$62
+    cmp #<(HUD_TEXT_ADDR+$22)
     bne ScoreRowDone
     lda VramQueue+4,y        ;zero suppress the highest digit of a score
     bne :+
@@ -1307,7 +1307,7 @@ DigitPLoop:
       sta VramQueue+4,y
     :
 ScoreRowDone:
-    lda #$20                 ;put at top of screen by default
+    lda #>HUD_TEXT_ADDR      ;put in the status bar by default
     bne Publish              ;unconditional
 TopScoreRow:
   lda VramQueue+4,y
@@ -1335,11 +1335,11 @@ ExitOutputN:
 .endmacro
 StatusBarData:
   StatusRow $f0, 6 ; top score display on title screen
-  StatusRow $62, 6 ; player score
-  StatusRow $62, 6
-  StatusRow $6d, 2 ; coin tally
-  StatusRow $6d, 2
-  StatusRow $7a, 3 ; game timer
+  StatusRow <(HUD_TEXT_ADDR+$22), 6 ; player score
+  StatusRow <(HUD_TEXT_ADDR+$22), 6
+  StatusRow <(HUD_TEXT_ADDR+$2d), 2 ; coin tally
+  StatusRow <(HUD_TEXT_ADDR+$2d), 2
+  StatusRow <(HUD_TEXT_ADDR+$3a), 3 ; game timer
 
 StatusBarOffset:
   .byte TopScoreDisplay + TopScoreLastIndex - DisplayDigits + 1

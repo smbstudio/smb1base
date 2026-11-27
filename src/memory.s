@@ -147,6 +147,7 @@ RESERVE VramBuffer, VRAM_BUFFER_SIZE
 
 RESERVE IrqNewScroll, 1
 RESERVE IrqPPUCTRL, 1
+HudReserveRam
 
 RESERVE NmiDisable, 1
 RESERVE NmiSkipped, 1

@@ -137,7 +137,7 @@ WriteBottomStatusLine:
   ldx VramQueueIndex
   lda #$00                ;new terminator first
   sta VramQueue+7,x
-  lda #$73                ;write address for world-area number on screen
+  lda #<(HUD_TEXT_ADDR+$33) ;write address for world-area number on screen
   sta VramQueue+1,x
   VramStoreEntry 3, VramQueue+2, x
   ldy WorldNumber         ;first the world number
@@ -150,7 +150,7 @@ WriteBottomStatusLine:
   iny                     ;increment for proper number display
   tya
   sta VramQueue+6,x
-  lda #$20                ;publish
+  lda #>HUD_TEXT_ADDR     ;publish
   sta VramQueue,x
   txa                     ;move the buffer offset up by 7 bytes
   clc
@@ -554,12 +554,12 @@ TopStatusBarLine:
   VramFill $23c0, 63, $aa ; attribute table data, clears name table 0 to palette 2
   VramBuf $23c2, 1        ; attribute table data, used for coin icon in status bar
   .byte $ea
-  VramBuf $2043, 5
+  VramBuf HUD_TEXT_ADDR+$03, 5
 TopStatusName:
   .byte "MARIO"
-  VramBuf $2052, 11
+  VramBuf HUD_TEXT_ADDR+$12, 11
   .byte "WORLD  TIME"
-  VramBuf $2068, 5
+  VramBuf HUD_TEXT_ADDR+$28, 5
   .byte "0  ", $2e, $29      ; score trailing digit and coin display
 
 WorldLivesDisplay:

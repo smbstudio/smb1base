@@ -68,6 +68,7 @@ ChkFTop:
       lda #$f8
       sta Sprite_Y_Position,y    ;otherwise move sprite offscreen
   :
+    HudShiftOamY                 ;the check above needs world Y, so shift afterwards
     iny                        ;move offset to next OAM data
     iny
     iny
@@ -731,6 +732,7 @@ AllocSpr 4
   dey
   dey                        ;decrement offset to Y coordinate
   lda Block_Rel_YPos         ;get first block object's relative vertical coordinate
+  HudShiftSpriteY
   jsr DumpTwoSpr             ;do sub to dump current Y coordinate into two sprites
   lda Block_Rel_XPos         ;get first block object's relative horizontal coordinate
   sta Sprite_X_Position,y    ;save into X coordinate of first sprite
@@ -744,6 +746,7 @@ AllocSpr 4
   adc #$06                   ;plus 6 pixels to position second brick chunk correctly
   sta Sprite_X_Position+4,y  ;save into X coordinate of second sprite
   lda Block_Rel_YPos+1       ;get second block object's relative vertical coordinate
+  HudShiftSpriteY
   sta Sprite_Y_Position+8,y
   sta Sprite_Y_Position+12,y ;dump into Y coordinates of third and fourth sprites
   lda Block_Rel_XPos+1       ;get second block object's relative horizontal coordinate
@@ -861,7 +864,8 @@ DrawSmallPlatform:
        cpx #$20                    ;if vertical coordinate below status bar,
        bcs TopSP                   ;do not mess with it
        lda #$f8                    ;otherwise move first three sprites offscreen
-TopSP: jsr DumpThreeSpr            ;dump vertical coordinate into Y coordinates
+TopSP: HudShiftSpriteY
+       jsr DumpThreeSpr            ;dump vertical coordinate into Y coordinates
        pla                         ;pull from stack
        clc
        adc #$80                    ;add 128 pixels
@@ -869,7 +873,8 @@ TopSP: jsr DumpThreeSpr            ;dump vertical coordinate into Y coordinates
        cpx #$20                    ;if below status bar (taking wrap into account)
        bcs BotSP                   ;then do not change altered coordinate
        lda #$f8                    ;otherwise move last three sprites offscreen
-BotSP: sta Sprite_Y_Position+12,y  ;dump vertical coordinate + 128 pixels
+BotSP: HudShiftSpriteY
+       sta Sprite_Y_Position+12,y  ;dump vertical coordinate + 128 pixels
        sta Sprite_Y_Position+16,y  ;into Y coordinates
        sta Sprite_Y_Position+20,y
        lda Enemy_OffscreenBits     ;get offscreen bits

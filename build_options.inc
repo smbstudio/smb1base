@@ -35,12 +35,12 @@ USE_SMB2J_FEATURES=0
 ; Mapper MMC5 is a more powerful mapper, but may have some compatibility issues with older emulators
 ; and powerpaks that aren't using the latest mapper set.
 ; It still has very high compatibility, and with the extra features and audio channels, its the recommended option
-MAPPER_MMC5=1
+MAPPER_MMC5=0
 
 ; Mapper MMC3 is the most compatible while still being reasonable feature rich target. Enabling this will reduce
 ; the amount of CHR available, so its only included for scenarios like making a repro cart and can work around the
 ; missing features.
-MAPPER_MMC3=0
+MAPPER_MMC3=1
 
 ; Enable PowerUps and Flags to spawn on slot others than the special slot (slot 6)
 MULTIPLE_POWERUPS_ON_SCREEN=1
@@ -52,8 +52,8 @@ USE_LOOPING_ANIM_CYCLE=0
 ; Level format. Set to 0 for vanilla levels. LDtk (1) requires a runtime that is not yet implemented.
 LEVEL_FORMAT_LDTK=0
 
-; HUD placement. 0: TOP, 1: BOTTOM, 2: SPRITE, 3: NONE. Only TOP is implemented.
-HUD_MODE=0
+; HUD placement. 0: TOP, 1: BOTTOM, 2: SPRITE, 3: NONE. Only TOP and BOTTOM are implemented.
+HUD_MODE=1
 
 ; Reserve this many bytes of battery-backed SRAM starting at $6000 for user save data.
 ; The engine leaves this area untouched. 0 leaves all 8 KiB available for engine allocations.
