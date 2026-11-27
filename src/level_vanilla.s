@@ -300,10 +300,11 @@ RendBBuf:
 ChkMTLow:
     sty R0 
     ldy MetatileBuffer,x       ;load stored metatile number
-    ; If its interactable at all (ie it has attributes that aren't a palette)
+    ; If its interactable at all (ie it has flags or a behavior)
     lda MTileAttribute,y
     and #%00111111
-    cmp #1 ; set the carry if there is any attributes
+    ora MTileBehavior,y
+    cmp #1 ; set the carry if there is any flag or behavior
     tya    ; and restore the tile id to A
     bcs StrBlock               ;if it has an attribute, branch
       lda #$00                   ;if less, init value before storing

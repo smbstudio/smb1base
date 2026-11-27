@@ -1083,6 +1083,18 @@ for (const [flag, bit] of Object.entries(flagBits)) {
   a.assign("MTILE_" + flag.toUpperCase(), bit);
 }
 
+const behaviorNames = [
+  "none",
+  "coin", "hidden", "vine",
+  "flagpole", "axe", "jumpspring",
+  "pipe_down_left", "pipe_down_right", "pipe_side_top", "pipe_side_bottom",
+  "brick_item", "brick_coins", "qblock", "bumped",
+  "water", "landform",
+];
+behaviorNames.forEach((behavior, value) => {
+  a.assign("MTILE_BEHAVIOR_" + behavior.toUpperCase(), value);
+});
+
 const entries = JSON.parse(metatileFile.text);
 if (!Array.isArray(entries)) throw new Error("metatiles.json must contain an array of entries");
 
@@ -1094,6 +1106,7 @@ const tileLabels = {
 };
 const tileTables = Object.fromEntries(Object.keys(tileLabels).map(key => [key, Array(256).fill(0)]));
 const attributes = Array(256).fill(0);
+const behaviors = Array(256).fill(0);
 const ids = new Set();
 
 entries.forEach((entry, index) => {
@@ -1148,6 +1161,17 @@ entries.forEach((entry, index) => {
     attribute |= flagBits[flag];
   }
   attributes[entry.id] = attribute;
+
+  // Optional, defaults to "none"
+  if (entry.behavior !== undefined) {
+    const behavior = behaviorNames.indexOf(entry.behavior);
+    if (behavior < 0) fail(`unknown behavior ${JSON.stringify(entry.behavior)}`);
+    behaviors[entry.id] = behavior;
+  }
+  // HandleClimbing only sees metatiles that are flagged climb
+  if (["flagpole", "vine"].includes(entry.behavior) && !entry.flags.includes("climb")) {
+    fail(`behavior "${entry.behavior}" requires the climb flag`);
+  }
 });
 
 for (const [field, label] of Object.entries(tileLabels)) {
@@ -1159,5 +1183,7 @@ for (const [field, label] of Object.entries(tileLabels)) {
 a.segment("FIXED");
 a.label("MTileAttribute");
 a.byte(attributes);
+a.label("MTileBehavior");
+a.byte(behaviors);
 .jsend
 .popseg
