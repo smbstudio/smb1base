@@ -1089,14 +1089,14 @@ const behaviorNames = [
   "flagpole", "axe", "jumpspring",
   "pipe_down_left", "pipe_down_right", "pipe_side_top", "pipe_side_bottom",
   "brick_item", "brick_coins", "qblock", "bumped",
-  "water", "landform",
+  "water",
 ];
 behaviorNames.forEach((behavior, value) => {
   a.assign("MTILE_BEHAVIOR_" + behavior.toUpperCase(), value);
 });
 
-const entries = JSON.parse(metatileFile.text);
-if (!Array.isArray(entries)) throw new Error("metatiles.json must contain an array of entries");
+const entries = JSON.parse(metatileFile.text).metatiles;
+if (!Array.isArray(entries)) throw new Error("metatiles.json \"metatiles\" must be an array of entries");
 
 const tileLabels = {
   tl: "MTileTopLeft",
